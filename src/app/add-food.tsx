@@ -12,24 +12,30 @@ import {
 
 import { FoodRow } from '@/components/FoodRow';
 import { QuantitySheet } from '@/components/QuantitySheet';
+import { SavedMealRow } from '@/components/SavedMealRow';
 import { colors, radius, spacing } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
-import { todayKey } from '@/lib/date';
+import { makeId, todayKey } from '@/lib/date';
 import { searchFoods } from '@/lib/openFoodFacts';
 import { isMealType, MEALS, type Food } from '@/lib/types';
 
-type Tab = 'search' | 'favorites';
+type Tab = 'search' | 'favorites' | 'meals';
 
 const MIN_QUERY = 3;
 const DEBOUNCE_MS = 700;
 
 export default function AddFoodScreen() {
-  const params = useLocalSearchParams<{ meal?: string; date?: string }>();
+  // target=draft: picking foods for a saved meal in the meal editor, not logging them.
+  const params = useLocalSearchParams<{ meal?: string; date?: string; target?: string }>();
+  const toDraft = params.target === 'draft';
   const meal = isMealType(params.meal) ? params.meal : 'snack';
   const date = params.date ?? todayKey();
   const mealLabel = MEALS.find((m) => m.key === meal)?.label ?? 'Meal';
+  const destLabel = toDraft ? 'Add to meal' : `Add to ${mealLabel}`;
 
-  const { favorites, isFavorite, toggleFavorite, addEntry } = useAppData();
+  const { favorites, isFavorite, toggleFavorite, addEntry, savedMeals, logSavedMeal, setMealDraft } =
+    useAppData();
+  const tabs: Tab[] = toDraft ? ['search', 'favorites'] : ['search', 'favorites', 'meals'];
 
   const [tab, setTab] = useState<Tab>('search');
   const [query, setQuery] = useState('');
@@ -82,24 +88,26 @@ export default function AddFoodScreen() {
     if (tab === 'favorites') {
       return <Text style={styles.message}>No favourites yet. Star a search result to save it.</Text>;
     }
+    if (tab === 'meals') {
+      return <Text style={styles.message}>No saved meals yet. Create one in the Meals tab.</Text>;
+    }
     if (loading) return null;
     if (error) return <Text style={[styles.message, { color: colors.danger }]}>{error}</Text>;
     if (searched) return <Text style={styles.message}>No foods found for “{lastQueryRef.current}”.</Text>;
-    return <Text style={styles.message}>Search the Open Food Facts database (min {MIN_QUERY} letters).</Text>;
   };
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: `Add to ${mealLabel}` }} />
+      <Stack.Screen options={{ title: destLabel }} />
 
       <View style={styles.segment}>
-        {(['search', 'favorites'] as const).map((t) => (
+        {tabs.map((t) => (
           <Pressable
             key={t}
             style={[styles.segBtn, tab === t && styles.segBtnActive]}
             onPress={() => setTab(t)}>
             <Text style={[styles.segText, tab === t && styles.segTextActive]}>
-              {t === 'search' ? 'Search' : `Favourites (${favorites.length})`}
+              {t === 'search' ? 'Search' : t === 'favorites' ? 'Favourites' : 'Meals'}
             </Text>
           </Pressable>
         ))}
@@ -111,7 +119,7 @@ export default function AddFoodScreen() {
             value={query}
             onChangeText={setQuery}
             onSubmitEditing={() => runSearch(query)}
-            placeholder="Search foods, e.g. oats, greek yogurt"
+            placeholder="Search food"
             placeholderTextColor={colors.muted}
             returnKeyType="search"
             autoFocus
@@ -122,6 +130,23 @@ export default function AddFoodScreen() {
         </View>
       )}
 
+      {tab === 'meals' ? (
+        <FlatList
+          data={savedMeals}
+          keyExtractor={(m) => m.id}
+          renderItem={({ item }) => (
+            <SavedMealRow
+              meal={item}
+              actionLabel="Add"
+              onPress={async () => {
+                await logSavedMeal(date, meal, item);
+                router.back();
+              }}
+            />
+          )}
+          ListEmptyComponent={renderEmpty}
+        />
+      ) : (
       <FlatList
         data={data}
         keyExtractor={(f) => f.id}
@@ -136,14 +161,20 @@ export default function AddFoodScreen() {
         )}
         ListEmptyComponent={renderEmpty}
       />
+      )}
 
       <QuantitySheet
         visible={selected !== null}
         food={selected}
-        confirmLabel={`Add to ${mealLabel}`}
-        onConfirm={async (grams) => {
+        confirmLabel={destLabel}
+        onConfirm={async (grams, unit) => {
           if (!selected) return;
-          await addEntry(date, meal, selected, grams);
+          if (toDraft) {
+            const item = { id: makeId(), food: selected, grams, unit };
+            setMealDraft((d) => (d ? { ...d, items: [...d.items, item] } : d));
+          } else {
+            await addEntry(date, meal, selected, grams, unit);
+          }
           setSelected(null);
           router.back();
         }}

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 
 import { colors, radius, spacing } from '@/constants/theme';
@@ -8,6 +8,7 @@ import type { Macros } from '@/lib/types';
 type Props = {
   totals: Macros;
   targets: Macros;
+  onPress?: () => void;
 };
 
 const RING_SIZE = 168;
@@ -69,9 +70,15 @@ function MacroStat({ label, value, target, color }: { label: string; value: numb
   );
 }
 
-export function MacroSummary({ totals, targets }: Props) {
+export function MacroSummary({ totals, targets, onPress }: Props) {
   return (
-    <View style={styles.card}>
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && { opacity: 0.85 }]}
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole="button"
+      accessibilityHint="Opens the full nutrition breakdown">
+      {onPress && <Text style={styles.chevron}>›</Text>}
       <View style={styles.topRow}>
         <View style={styles.side}>
           <Text style={styles.sideValue}>{fmt(totals.kcal)}</Text>
@@ -88,12 +95,13 @@ export function MacroSummary({ totals, targets }: Props) {
         <MacroStat label="Protein" value={totals.protein} target={targets.protein} color={colors.protein} />
         <MacroStat label="Fat" value={totals.fat} target={targets.fat} color={colors.fat} />
       </View>
-    </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.card, borderRadius: radius, padding: spacing + 4, gap: 20 },
+  chevron: { position: 'absolute', top: 10, right: 16, fontSize: 24, color: colors.muted },
   topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   side: { alignItems: 'center', width: 64 },
   sideValue: { fontSize: 18, fontWeight: '700', color: colors.text },

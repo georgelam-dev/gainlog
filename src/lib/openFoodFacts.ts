@@ -1,4 +1,5 @@
-import type { Food } from './types';
+import type { Food, NutrientKey, Nutrients } from './types';
+import { servingLabelFrom } from './units';
 
 /**
  * Open Food Facts — free, open, no API key.
@@ -18,11 +19,42 @@ type OffProduct = {
   brands?: string | string[];
   nutriments?: OffNutriments;
   serving_quantity?: number | string;
+  serving_size?: string;
 };
 
 function num(v: unknown): number | undefined {
   const n = typeof v === 'string' ? parseFloat(v) : typeof v === 'number' ? v : NaN;
   return Number.isFinite(n) ? n : undefined;
+}
+
+/** OFF nutriment names; OFF normalises every *_100g value to grams. */
+const OFF_NUTRIENTS: Record<NutrientKey, string> = {
+  fiber: 'fiber',
+  sugars: 'sugars',
+  saturatedFat: 'saturated-fat',
+  monoFat: 'monounsaturated-fat',
+  transFat: 'trans-fat',
+  cholesterol: 'cholesterol',
+  sodium: 'sodium',
+  potassium: 'potassium',
+  vitaminA: 'vitamin-a',
+  vitaminC: 'vitamin-c',
+  calcium: 'calcium',
+  iron: 'iron',
+};
+
+function toNutrients(n: OffNutriments): Nutrients {
+  const out: Nutrients = {};
+  for (const [key, off] of Object.entries(OFF_NUTRIENTS) as [NutrientKey, string][]) {
+    const v = num(n[`${off}_100g`]);
+    if (v !== undefined && v >= 0) out[key] = v;
+  }
+  // EU labels often give salt only; sodium = salt / 2.5.
+  if (out.sodium === undefined) {
+    const salt = num(n['salt_100g']);
+    if (salt !== undefined && salt >= 0) out.sodium = salt / 2.5;
+  }
+  return out;
 }
 
 function toFood(p: OffProduct): Food | null {
@@ -48,7 +80,9 @@ function toFood(p: OffProduct): Food | null {
       carbs: num(n['carbohydrates_100g']) ?? 0,
       fat: num(n['fat_100g']) ?? 0,
     },
+    nutrients: toNutrients(n),
     servingG: servingG && servingG > 0 ? servingG : undefined,
+    servingLabel: servingG && servingG > 0 ? servingLabelFrom(p.serving_size) : undefined,
   };
 }
 
@@ -86,3 +120,4 @@ export async function searchFoods(query: string, signal?: AbortSignal): Promise<
     return dedupe(products.map(toFood).filter((f): f is Food => f !== null));
   }
 }
+

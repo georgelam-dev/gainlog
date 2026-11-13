@@ -1,10 +1,15 @@
 import Storage from 'expo-sqlite/kv-store';
 
-import { DEFAULT_SETTINGS, type Food, type LogEntry, type Settings } from './types';
+import { DEFAULT_SETTINGS, type Food, type FoodUnit, type LogEntry, type SavedMeal, type Settings } from './types';
+
+/** Custom units keyed by food id. */
+export type CustomUnits = Record<string, FoodUnit[]>;
 
 const KEYS = {
   settings: 'settings',
   favorites: 'favorites',
+  customUnits: 'customUnits',
+  savedMeals: 'savedMeals',
   log: (date: string) => `log:${date}`,
 };
 
@@ -35,6 +40,12 @@ export const storage = {
 
   loadFavorites: () => readJSON<Food[]>(KEYS.favorites, []),
   saveFavorites: (f: Food[]) => writeJSON(KEYS.favorites, f),
+
+  loadCustomUnits: () => readJSON<CustomUnits>(KEYS.customUnits, {}),
+  saveCustomUnits: (u: CustomUnits) => writeJSON(KEYS.customUnits, u),
+
+  loadSavedMeals: () => readJSON<SavedMeal[]>(KEYS.savedMeals, []),
+  saveSavedMeals: (m: SavedMeal[]) => writeJSON(KEYS.savedMeals, m),
 
   loadLog: (date: string) => readJSON<LogEntry[]>(KEYS.log(date), []),
   saveLog: (date: string, entries: LogEntry[]) => writeJSON(KEYS.log(date), entries),

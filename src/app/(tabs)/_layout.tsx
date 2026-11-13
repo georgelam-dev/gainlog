@@ -29,6 +29,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="meals"
+        options={{
+          title: 'Meals',
+          tabBarIcon: ({ color }) => <TabIcon glyph="☰" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="favorites"
         options={{
           title: 'Favourites',

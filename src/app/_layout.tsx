@@ -17,6 +17,8 @@ export default function RootLayout() {
         }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="add-food" options={{ presentation: 'modal', title: 'Add food' }} />
+        <Stack.Screen name="meal-editor" options={{ title: 'Meal' }} />
+        <Stack.Screen name="nutrition" options={{ title: 'Nutrition' }} />
       </Stack>
     </AppDataProvider>
   );

@@ -23,7 +23,8 @@ export function add(a: Macros, b: Macros): Macros {
   };
 }
 
-export function sumEntries(entries: LogEntry[]): Macros {
+/** Works for log entries and saved-meal items alike. */
+export function sumEntries(entries: Pick<LogEntry, 'food' | 'grams'>[]): Macros {
   return entries.reduce((acc, e) => add(acc, scale(e.food, e.grams)), ZERO_MACROS);
 }
 
