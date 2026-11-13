@@ -1,4 +1,4 @@
-package com.georgelam.MyApp
+package com.georgelam.gainlog
 
 import android.app.Application
 import android.content.res.Configuration
