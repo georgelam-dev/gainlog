@@ -121,3 +121,15 @@ export async function searchFoods(query: string, signal?: AbortSignal): Promise<
   }
 }
 
+
+/** Look up one product by its barcode. Returns null if OFF doesn't know it (or lacks calories). */
+export async function fetchFoodByBarcode(code: string, signal?: AbortSignal): Promise<Food | null> {
+  const res = await fetch(
+    `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=${FIELDS}`,
+    { signal, headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' } }
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  return data?.status === 1 && data.product ? toFood({ ...data.product, code }) : null;
+}

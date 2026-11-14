@@ -10,13 +10,14 @@ import {
   View,
 } from 'react-native';
 
+import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { FoodRow } from '@/components/FoodRow';
 import { QuantitySheet } from '@/components/QuantitySheet';
 import { SavedMealRow } from '@/components/SavedMealRow';
 import { colors, radius, spacing } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
 import { makeId, todayKey } from '@/lib/date';
-import { searchFoods } from '@/lib/openFoodFacts';
+import { fetchFoodByBarcode, searchFoods } from '@/lib/openFoodFacts';
 import { isMealType, MEALS, type Food } from '@/lib/types';
 
 type Tab = 'search' | 'favorites' | 'meals';
@@ -44,6 +45,24 @@ export default function AddFoodScreen() {
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
   const [selected, setSelected] = useState<Food | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [scanLoading, setScanLoading] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+
+  const onBarcode = async (code: string) => {
+    setScanning(false);
+    setScanError(null);
+    setScanLoading(true);
+    try {
+      const food = await fetchFoodByBarcode(code);
+      if (food) setSelected(food);
+      else setScanError(`No product found for barcode ${code}. Try searching by name.`);
+    } catch {
+      setScanError('Barcode lookup failed. Check your connection and try again.');
+    } finally {
+      setScanLoading(false);
+    }
+  };
 
   const abortRef = useRef<AbortController | null>(null);
   const lastQueryRef = useRef('');
@@ -115,6 +134,7 @@ export default function AddFoodScreen() {
 
       {tab === 'search' && (
         <View style={styles.searchRow}>
+          <View style={styles.searchWrap}>
           <TextInput
             value={query}
             onChangeText={setQuery}
@@ -126,9 +146,23 @@ export default function AddFoodScreen() {
             autoCorrect={false}
             style={styles.search}
           />
-          {loading && <ActivityIndicator style={styles.spinner} color={colors.primary} />}
+          {(loading || scanLoading) && (
+            <ActivityIndicator style={styles.spinner} color={colors.primary} />
+          )}
+          </View>
+          <Pressable
+            style={styles.scanBtn}
+            onPress={() => {
+              setScanError(null);
+              setScanning(true);
+            }}
+            accessibilityLabel="Scan barcode">
+            <Text style={styles.scanIcon}>▥</Text>
+            <Text style={styles.scanLabel}>Scan</Text>
+          </Pressable>
         </View>
       )}
+      {tab === 'search' && scanError && <Text style={styles.scanError}>{scanError}</Text>}
 
       {tab === 'meals' ? (
         <FlatList
@@ -162,6 +196,8 @@ export default function AddFoodScreen() {
         ListEmptyComponent={renderEmpty}
       />
       )}
+
+      <BarcodeScanner visible={scanning} onScanned={onBarcode} onClose={() => setScanning(false)} />
 
       <QuantitySheet
         visible={selected !== null}
@@ -198,7 +234,20 @@ const styles = StyleSheet.create({
   segBtnActive: { backgroundColor: colors.primary },
   segText: { color: colors.muted, fontWeight: '600' },
   segTextActive: { color: colors.primaryText },
-  searchRow: { marginHorizontal: spacing, marginBottom: 8, justifyContent: 'center' },
+  searchRow: { flexDirection: 'row', gap: 8, marginHorizontal: spacing, marginBottom: 8 },
+  searchWrap: { flex: 1, justifyContent: 'center' },
+  scanBtn: {
+    backgroundColor: colors.card,
+    borderRadius: radius,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scanIcon: { color: colors.primary, fontSize: 18, lineHeight: 20 },
+  scanLabel: { color: colors.primary, fontSize: 11, fontWeight: '700' },
+  scanError: { color: colors.danger, marginHorizontal: spacing, marginBottom: 8, fontSize: 13 },
   search: {
     backgroundColor: colors.card,
     borderRadius: radius,

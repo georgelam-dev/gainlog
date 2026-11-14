@@ -28,7 +28,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to use your camera to scan food barcodes.",
+          "recordAudioAndroid": false
+        }
+      ]
     ],
     "extra": {
       "router": {
