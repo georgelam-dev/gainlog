@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 
+import { BackupCard } from '@/components/BackupCard';
 import { colors, radius, spacing } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
 import {
@@ -45,12 +46,20 @@ const MACROS = [
 export default function SettingsScreen() {
   const { settings, ready } = useAppData();
   if (!ready) return null;
-  // Remount the form whenever stored settings change (initial load, after save).
-  return <SettingsForm key={JSON.stringify(settings)} settings={settings} />;
+  // Remount the target form when the stored targets change (initial load, after save) —
+  // but not when the unit toggle saves, so unsaved target edits survive.
+  const targetsKey = JSON.stringify([
+    settings.calories,
+    settings.macroMode,
+    settings.carbs,
+    settings.protein,
+    settings.fat,
+  ]);
+  return <SettingsForm key={targetsKey} settings={settings} />;
 }
 
 function SettingsForm({ settings }: { settings: Settings }) {
-  const { saveSettings } = useAppData();
+  const { settings: current, saveSettings } = useAppData();
   const [mode, setMode] = useState<MacroMode>(settings.macroMode);
   const [draft, setDraft] = useState<Draft>(() => toDraft(settings));
 
@@ -87,7 +96,8 @@ function SettingsForm({ settings }: { settings: Settings }) {
     setMode(next);
   };
 
-  const pending: Settings = { calories, macroMode: mode, carbs, protein, fat };
+  // Spread the latest settings so saving targets never reverts the unit toggle.
+  const pending: Settings = { ...current, calories, macroMode: mode, carbs, protein, fat };
   const preview = !error ? macroTargets(pending) : null;
   const dirty =
     mode !== settings.macroMode ||
@@ -99,14 +109,19 @@ function SettingsForm({ settings }: { settings: Settings }) {
   const onSave = async () => {
     if (error) return;
     await saveSettings(pending);
-    Alert.alert('Saved', 'Your daily targets have been updated.');
+    Alert.alert('Saved', 'Your daily goal has been updated.');
   };
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Daily calories</Text>
+          <View style={{ gap: 2 }}>
+            <Text style={styles.sectionTitle}>Daily goal</Text>
+            <Text style={styles.note}>Your default calorie and macro targets for each day.</Text>
+          </View>
+
+          <Text style={styles.subTitle}>Calories</Text>
           <View style={styles.inputRow}>
             <TextInput
               value={draft.calories}
@@ -117,10 +132,10 @@ function SettingsForm({ settings }: { settings: Settings }) {
             />
             <Text style={styles.unit}>kcal</Text>
           </View>
-        </View>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Macro distribution</Text>
+          <View style={styles.divider} />
+
+          <Text style={styles.subTitle}>Macro distribution</Text>
           <View style={styles.segment}>
             {(['percent', 'grams'] as const).map((m) => (
               <Pressable
@@ -185,6 +200,28 @@ function SettingsForm({ settings }: { settings: Settings }) {
           onPress={onSave}>
           <Text style={styles.saveText}>Save</Text>
         </Pressable>
+
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Units</Text>
+          <View style={styles.unitRow}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={styles.macroLabelWide}>Weight</Text>
+            </View>
+            <View style={[styles.segment, styles.unitSegment]}>
+              {(['kg', 'lb'] as const).map((u) => (
+                <Pressable
+                  key={u}
+                  style={[styles.segBtn, styles.unitBtn, current.weightUnit === u && styles.segBtnActive]}
+                  onPress={() => saveSettings({ ...current, weightUnit: u })}
+                  accessibilityState={{ selected: current.weightUnit === u }}>
+                  <Text style={[styles.segText, current.weightUnit === u && styles.segTextActive]}>{u}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        <BackupCard />
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -194,6 +231,14 @@ const styles = StyleSheet.create({
   content: { padding: spacing, gap: 12, paddingBottom: spacing * 3 },
   card: { backgroundColor: colors.card, borderRadius: radius, padding: spacing, gap: 12 },
   sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
+  subTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.muted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   input: {
     flex: 1,
@@ -218,6 +263,10 @@ const styles = StyleSheet.create({
   unitSmall: { width: 16, color: colors.muted },
   derived: { flex: 1, textAlign: 'right', color: colors.muted, fontSize: 13 },
   note: { fontSize: 13, color: colors.muted },
+  unitRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  unitSegment: { width: 120 },
+  unitBtn: { paddingVertical: 6 },
+  macroLabelWide: { fontSize: 15, color: colors.text, fontWeight: '600' },
   linkBtn: { alignSelf: 'flex-start' },
   linkText: { color: colors.primary, fontWeight: '600' },
   error: { color: colors.danger, textAlign: 'center' },

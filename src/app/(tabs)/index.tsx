@@ -9,7 +9,7 @@ import { MealSection } from '@/components/MealSection';
 import { QuantitySheet } from '@/components/QuantitySheet';
 import { spacing } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
-import { makeId, todayKey } from '@/lib/date';
+import { makeId, shiftDateKey, todayKey } from '@/lib/date';
 import { macroTargets, sumEntries } from '@/lib/nutrition';
 import { MEALS, type LogEntry, type MealType } from '@/lib/types';
 
@@ -23,6 +23,7 @@ export default function HomeScreen() {
     removeEntry,
     setMealDraft,
     addEntries,
+    copyMealFromDate,
   } = useAppData();
   const isToday = selectedDate === todayKey();
   const [editing, setEditing] = useState<LogEntry | null>(null);
@@ -48,6 +49,13 @@ export default function HomeScreen() {
       { text: 'OK', style: 'cancel' },
       { text: 'View today', onPress: () => setSelectedDate(today) },
     ]);
+  };
+
+  const copyFromPreviousDay = async (meal: MealType, label: string) => {
+    const from = shiftDateKey(selectedDate, -1);
+    const day = isToday ? 'yesterday' : 'the previous day';
+    const n = await copyMealFromDate(from, selectedDate, meal);
+    if (n === 0) Alert.alert('Nothing to copy', `No food was logged for ${label} ${day}.`);
   };
 
   const confirmDelete = (entry: LogEntry) =>
@@ -78,15 +86,21 @@ export default function HomeScreen() {
             onPressEntry={setEditing}
             onLongPressEntry={confirmDelete}
             menuActions={[
-              ...(isToday
-                ? []
-                : [
+              {
+                label: isToday ? 'Copy from yesterday' : 'Copy from previous day',
+                onPress: () => copyFromPreviousDay(meal.key, meal.label),
+              },
+              ...(mealEntries.length && !isToday
+                ? [
                     {
                       label: 'Copy to today',
                       onPress: () => copyToToday(meal.key, meal.label, mealEntries),
                     },
-                  ]),
-              { label: 'Save as meal', onPress: () => saveAsMeal(mealEntries) },
+                  ]
+                : []),
+              ...(mealEntries.length
+                ? [{ label: 'Save as meal', onPress: () => saveAsMeal(mealEntries) }]
+                : []),
             ]}
           />
           );

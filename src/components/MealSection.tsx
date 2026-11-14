@@ -1,10 +1,18 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ActionMenu, type MenuAction } from '@/components/ActionMenu';
 import { MealBreakdown } from '@/components/MealBreakdown';
 import { colors, radius, spacing } from '@/constants/theme';
 import { fmt, fmt1, scale, sumEntries } from '@/lib/nutrition';
 import type { LogEntry } from '@/lib/types';
+
+/** "2 × large egg · 100 g · Brand", or "Quick add" for hand-entered macros. */
+function entryMeta(e: LogEntry): string {
+  if (e.food.quick) return e.unit && e.unit.qty !== 1 ? `Quick add × ${fmt1(e.unit.qty)}` : 'Quick add';
+  const unit = e.unit ? `${fmt1(e.unit.qty)} × ${e.unit.label} · ` : '';
+  return `${unit}${fmt(e.grams)} g${e.food.brand ? ` · ${e.food.brand}` : ''}`;
+}
 
 type Props = {
   label: string;
@@ -12,8 +20,8 @@ type Props = {
   onAdd: () => void;
   onPressEntry: (entry: LogEntry) => void;
   onLongPressEntry?: (entry: LogEntry) => void;
-  /** Actions shown in the ⋯ menu (only when the section has food). */
-  menuActions?: { label: string; onPress: () => void }[];
+  /** Actions shown in the ⋯ menu (hidden when empty). */
+  menuActions?: MenuAction[];
 };
 
 export function MealSection({
@@ -26,6 +34,7 @@ export function MealSection({
 }: Props) {
   // Expanded by default whenever the meal has food; the user can collapse it.
   const [collapsed, setCollapsed] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const totals = sumEntries(entries);
   const hasEntries = entries.length > 0;
   const expanded = hasEntries && !collapsed;
@@ -44,24 +53,19 @@ export function MealSection({
             {label}
             {hasEntries && <Text style={styles.chevron}>{expanded ? '  ▾' : '  ▸'}</Text>}
           </Text>
-          <Text style={styles.subtitle}>
-            {hasEntries
-              ? expanded
+          {hasEntries && (
+            <Text style={styles.subtitle}>
+              {expanded
                 ? `${fmt(totals.kcal)} kcal`
-                : `${fmt(totals.kcal)} kcal · C ${fmt(totals.carbs)} · P ${fmt(totals.protein)} · F ${fmt(totals.fat)}`
-              : 'No food logged'}
-          </Text>
+                : `${fmt(totals.kcal)} kcal · C ${fmt(totals.carbs)} · P ${fmt(totals.protein)} · F ${fmt(totals.fat)}`}
+            </Text>
+          )}
         </Pressable>
-        {hasEntries && menuActions.length > 0 && (
+        {menuActions.length > 0 && (
           <Pressable
             style={styles.moreBtn}
             hitSlop={6}
-            onPress={() =>
-              Alert.alert(label, undefined, [
-                ...menuActions.map((a) => ({ text: a.label, onPress: a.onPress })),
-                { text: 'Cancel', style: 'cancel' as const },
-              ])
-            }
+            onPress={() => setMenuOpen(true)}
             accessibilityLabel={`${label} options`}>
             <Text style={styles.moreText}>⋯</Text>
           </Pressable>
@@ -87,8 +91,7 @@ export function MealSection({
                 {e.food.name}
               </Text>
               <Text style={styles.entryMeta} numberOfLines={1}>
-                {e.unit ? `${fmt1(e.unit.qty)} × ${e.unit.label} · ` : ''}
-                {fmt(e.grams)} g{e.food.brand ? ` · ${e.food.brand}` : ''}
+                {entryMeta(e)}
               </Text>
             </View>
             <Text style={styles.entryKcal}>
@@ -98,6 +101,12 @@ export function MealSection({
         );
       })}
 
+      <ActionMenu
+        visible={menuOpen}
+        title={label}
+        actions={menuActions}
+        onClose={() => setMenuOpen(false)}
+      />
     </View>
   );
 }

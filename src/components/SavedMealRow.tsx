@@ -10,9 +10,11 @@ type Props = {
   onPress: () => void;
   /** Optional trailing action label, e.g. "Add" */
   actionLabel?: string;
+  /** Shows an "Edit" button that opens the meal editor */
+  onEdit?: () => void;
 };
 
-export function SavedMealRow({ meal, onPress, actionLabel }: Props) {
+export function SavedMealRow({ meal, onPress, actionLabel, onEdit }: Props) {
   const t = sumEntries(meal.items);
   const summary = meal.items.map((i) => `${describeAmount(i)} ${i.food.name}`).join(', ');
   return (
@@ -31,6 +33,15 @@ export function SavedMealRow({ meal, onPress, actionLabel }: Props) {
           {fmt(t.kcal)} kcal · C {fmt(t.carbs)} · P {fmt(t.protein)} · F {fmt(t.fat)}
         </Text>
       </View>
+      {onEdit && (
+        <Pressable
+          onPress={onEdit}
+          hitSlop={8}
+          style={styles.editBtn}
+          accessibilityLabel={`Edit ${meal.name}`}>
+          <Text style={styles.editText}>Edit</Text>
+        </Pressable>
+      )}
       {actionLabel && <Text style={styles.action}>{actionLabel}</Text>}
     </Pressable>
   );
@@ -51,4 +62,11 @@ const styles = StyleSheet.create({
   summary: { fontSize: 13, color: colors.muted, marginTop: 2 },
   macros: { fontSize: 12, color: colors.muted, marginTop: 4 },
   action: { color: colors.primary, fontWeight: '700', fontSize: 15 },
+  editBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: colors.cardAlt,
+  },
+  editText: { color: colors.text, fontWeight: '600', fontSize: 13 },
 });

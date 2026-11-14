@@ -9,9 +9,13 @@ import {
   View,
 } from 'react-native';
 
+import { router } from 'expo-router';
+
+import { NutriScoreBadge } from '@/components/NutriScoreBadge';
 import { colors, radius, spacing } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
 import { fmt, fmt1, scale } from '@/lib/nutrition';
+import { isOffProduct } from '@/lib/openFoodFacts';
 import type { EntryUnit, Food, FoodUnit } from '@/lib/types';
 import { unitsFor } from '@/lib/units';
 
@@ -110,10 +114,27 @@ function SheetBody({
     <KeyboardAvoidingView style={styles.backdrop} behavior="padding">
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       <View style={styles.sheet}>
-        <Text style={styles.name} numberOfLines={2}>
-          {food.name}
-        </Text>
-        {food.brand && <Text style={styles.muted}>{food.brand}</Text>}
+        <View style={styles.titleRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.name} numberOfLines={2}>
+              {food.name}
+            </Text>
+            {food.brand && <Text style={styles.muted}>{food.brand}</Text>}
+          </View>
+          {isOffProduct(food) && (
+            <Pressable
+              hitSlop={10}
+              style={styles.detailsBtn}
+              onPress={() => {
+                onClose();
+                router.push({ pathname: '/food/[code]', params: { code: food.id } });
+              }}
+              accessibilityLabel={`Details for ${food.name}`}>
+              {food.nutriscore && <NutriScoreBadge grade={food.nutriscore} />}
+              <Text style={styles.detailsText}>Details ›</Text>
+            </Pressable>
+          )}
+        </View>
 
         <View style={styles.unitRow}>
           <UnitChip label="grams" active={unit === null} onPress={() => selectUnit(null)} />
@@ -268,6 +289,17 @@ const styles = StyleSheet.create({
   },
   name: { fontSize: 18, fontWeight: '700', color: colors.text },
   muted: { fontSize: 13, color: colors.muted },
+  titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  detailsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: colors.cardAlt,
+  },
+  detailsText: { color: colors.primary, fontWeight: '700', fontSize: 13 },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   input: {
     flex: 1,

@@ -13,14 +13,19 @@ import {
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { FoodRow } from '@/components/FoodRow';
 import { QuantitySheet } from '@/components/QuantitySheet';
+import { QuickAddSheet } from '@/components/QuickAddSheet';
 import { SavedMealRow } from '@/components/SavedMealRow';
 import { colors, radius, spacing } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
 import { makeId, todayKey } from '@/lib/date';
 import { fetchFoodByBarcode, searchFoods } from '@/lib/openFoodFacts';
-import { isMealType, MEALS, type Food } from '@/lib/types';
+import { isMealType, MEALS, type EntryUnit, type Food, type SavedMeal } from '@/lib/types';
+import { describeAmount } from '@/lib/units';
 
 type Tab = 'search' | 'favorites' | 'meals';
+
+/** A food picked from a list, optionally with the amount to pre-fill (recent foods). */
+type Picked = { food: Food; grams?: number; unit?: EntryUnit };
 
 const MIN_QUERY = 3;
 const DEBOUNCE_MS = 700;
@@ -34,17 +39,43 @@ export default function AddFoodScreen() {
   const mealLabel = MEALS.find((m) => m.key === meal)?.label ?? 'Meal';
   const destLabel = toDraft ? 'Add to meal' : `Add to ${mealLabel}`;
 
-  const { favorites, isFavorite, toggleFavorite, addEntry, savedMeals, logSavedMeal, setMealDraft } =
-    useAppData();
+  const {
+    favorites,
+    isFavorite,
+    toggleFavorite,
+    addEntry,
+    savedMeals,
+    logSavedMeal,
+    setMealDraft,
+    recentFoods,
+  } = useAppData();
   const tabs: Tab[] = toDraft ? ['search', 'favorites'] : ['search', 'favorites', 'meals'];
 
   const [tab, setTab] = useState<Tab>('search');
+
+  /** Create or edit a saved meal; the editor returns here when done. */
+  const openMealEditor = (draft: SavedMeal) => {
+    setMealDraft(draft);
+    router.push('/meal-editor');
+  };
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Food[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
-  const [selected, setSelected] = useState<Food | null>(null);
+  const [selected, setSelected] = useState<Picked | null>(null);
+  const [quickOpen, setQuickOpen] = useState(false);
+
+  /** Log the food (or add it to the meal being built), then close this screen. */
+  const commit = async (food: Food, grams: number, unit?: EntryUnit) => {
+    if (toDraft) {
+      const item = { id: makeId(), food, grams, unit };
+      setMealDraft((d) => (d ? { ...d, items: [...d.items, item] } : d));
+    } else {
+      await addEntry(date, meal, food, grams, unit);
+    }
+    router.back();
+  };
   const [scanning, setScanning] = useState(false);
   const [scanLoading, setScanLoading] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
@@ -55,7 +86,7 @@ export default function AddFoodScreen() {
     setScanLoading(true);
     try {
       const food = await fetchFoodByBarcode(code);
-      if (food) setSelected(food);
+      if (food) setSelected({ food });
       else setScanError(`No product found for barcode ${code}. Try searching by name.`);
     } catch {
       setScanError('Barcode lookup failed. Check your connection and try again.');
@@ -101,14 +132,32 @@ export default function AddFoodScreen() {
 
   useEffect(() => () => abortRef.current?.abort(), []);
 
-  const data = tab === 'search' ? results : favorites;
+  // With no search typed yet, the Search tab shows recently logged foods.
+  const showRecent = tab === 'search' && query.trim().length < MIN_QUERY;
+  const data: Picked[] =
+    tab === 'favorites'
+      ? favorites.map((food) => ({ food }))
+      : showRecent
+        ? recentFoods
+        : results.map((food) => ({ food }));
 
   const renderEmpty = () => {
     if (tab === 'favorites') {
       return <Text style={styles.message}>No favourites yet. Star a search result to save it.</Text>;
     }
     if (tab === 'meals') {
-      return <Text style={styles.message}>No saved meals yet. Create one in the Meals tab.</Text>;
+      return (
+        <Text style={styles.message}>
+          Save foods you often eat together, like “Daily breakfast”, then add them here in one tap.
+        </Text>
+      );
+    }
+    if (showRecent) {
+      return (
+        <Text style={styles.message}>
+          Search by name or scan a barcode. Foods you log will show up here for quick re-adding.
+        </Text>
+      );
     }
     if (loading) return null;
     if (error) return <Text style={[styles.message, { color: colors.danger }]}>{error}</Text>;
@@ -117,7 +166,16 @@ export default function AddFoodScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: destLabel }} />
+      <Stack.Screen
+        options={{
+          title: destLabel,
+          headerRight: () => (
+            <Pressable onPress={() => setQuickOpen(true)} hitSlop={10}>
+              <Text style={styles.headerBtn}>Quick add</Text>
+            </Pressable>
+          ),
+        }}
+      />
 
       <View style={styles.segment}>
         {tabs.map((t) => (
@@ -168,10 +226,18 @@ export default function AddFoodScreen() {
         <FlatList
           data={savedMeals}
           keyExtractor={(m) => m.id}
+          ListHeaderComponent={
+            <Pressable
+              style={styles.newMealBtn}
+              onPress={() => openMealEditor({ id: makeId(), name: '', items: [] })}>
+              <Text style={styles.newMealText}>+ New meal</Text>
+            </Pressable>
+          }
           renderItem={({ item }) => (
             <SavedMealRow
               meal={item}
               actionLabel="Add"
+              onEdit={() => openMealEditor({ ...item, items: [...item.items] })}
               onPress={async () => {
                 await logSavedMeal(date, meal, item);
                 router.back();
@@ -183,14 +249,22 @@ export default function AddFoodScreen() {
       ) : (
       <FlatList
         data={data}
-        keyExtractor={(f) => f.id}
+        keyExtractor={(p) => p.food.id}
         keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          showRecent && recentFoods.length ? <Text style={styles.listHeader}>Recent</Text> : undefined
+        }
         renderItem={({ item }) => (
           <FoodRow
-            food={item}
-            favorite={isFavorite(item.id)}
+            food={item.food}
+            favorite={isFavorite(item.food.id)}
+            lastAmount={
+              showRecent && item.grams !== undefined
+                ? describeAmount({ grams: item.grams, unit: item.unit })
+                : undefined
+            }
             onPress={() => setSelected(item)}
-            onToggleFavorite={() => toggleFavorite(item)}
+            onToggleFavorite={() => toggleFavorite(item.food)}
           />
         )}
         ListEmptyComponent={renderEmpty}
@@ -201,20 +275,27 @@ export default function AddFoodScreen() {
 
       <QuantitySheet
         visible={selected !== null}
-        food={selected}
+        food={selected?.food ?? null}
+        initialGrams={selected?.grams}
+        initialUnit={selected?.unit}
         confirmLabel={destLabel}
         onConfirm={async (grams, unit) => {
           if (!selected) return;
-          if (toDraft) {
-            const item = { id: makeId(), food: selected, grams, unit };
-            setMealDraft((d) => (d ? { ...d, items: [...d.items, item] } : d));
-          } else {
-            await addEntry(date, meal, selected, grams, unit);
-          }
+          const { food } = selected;
           setSelected(null);
-          router.back();
+          await commit(food, grams, unit);
         }}
         onClose={() => setSelected(null)}
+      />
+
+      <QuickAddSheet
+        visible={quickOpen}
+        confirmLabel={destLabel}
+        onConfirm={async (food, grams, unit) => {
+          setQuickOpen(false);
+          await commit(food, grams, unit);
+        }}
+        onClose={() => setQuickOpen(false)}
       />
     </View>
   );
@@ -232,6 +313,16 @@ const styles = StyleSheet.create({
   },
   segBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: radius - 3 },
   segBtnActive: { backgroundColor: colors.primary },
+  newMealBtn: {
+    marginHorizontal: spacing,
+    marginBottom: 10,
+    borderRadius: radius,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  newMealText: { color: colors.primary, fontWeight: '700', fontSize: 15 },
   segText: { color: colors.muted, fontWeight: '600' },
   segTextActive: { color: colors.primaryText },
   searchRow: { flexDirection: 'row', gap: 8, marginHorizontal: spacing, marginBottom: 8 },
@@ -260,5 +351,16 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   spinner: { position: 'absolute', right: 14 },
+  headerBtn: { color: colors.primary, fontWeight: '700', fontSize: 15 },
+  listHeader: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginHorizontal: spacing,
+    marginTop: 4,
+    marginBottom: 6,
+  },
   message: { padding: spacing * 2, textAlign: 'center', color: colors.muted },
 });

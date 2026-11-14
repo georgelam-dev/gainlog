@@ -19,18 +19,26 @@ import {
   type LogEntry,
   type MealItem,
   type MealType,
+  type RecentFood,
   type SavedMeal,
   type Settings,
+  type WeightEntry,
 } from '@/lib/types';
+
+const MAX_RECENT = 30;
 
 type AppData = {
   ready: boolean;
   settings: Settings;
   saveSettings: (s: Settings) => Promise<void>;
+  /** Re-read everything from storage (after importing a backup). */
+  reloadAll: () => Promise<void>;
 
   favorites: Food[];
   isFavorite: (id: string) => boolean;
   toggleFavorite: (food: Food) => void;
+
+  recentFoods: RecentFood[];
 
   customUnits: CustomUnits;
   addCustomUnit: (foodId: string, unit: FoodUnit) => void;
@@ -44,6 +52,11 @@ type AppData = {
   mealDraft: SavedMeal | null;
   setMealDraft: (draft: SavedMeal | null | ((d: SavedMeal | null) => SavedMeal | null)) => void;
 
+  weights: WeightEntry[];
+  /** Set (or replace) the bodyweight for a day. */
+  setWeight: (date: string, kg: number) => void;
+  deleteWeight: (date: string) => void;
+
   selectedDate: string;
   setSelectedDate: (date: string) => void;
   entries: LogEntry[];
@@ -55,45 +68,73 @@ type AppData = {
   addEntries: (date: string, meal: MealType, items: Omit<MealItem, 'id'>[]) => Promise<void>;
   /** Log every item of a saved meal into a meal slot. */
   logSavedMeal: (date: string, meal: MealType, saved: SavedMeal) => Promise<void>;
+  /** Copy one meal slot from another day; resolves to the number of items copied. */
+  copyMealFromDate: (fromDate: string, toDate: string, meal: MealType) => Promise<number>;
 };
 
 const AppDataContext = createContext<AppData | null>(null);
+
+/** Read every app-wide value from storage (logs are loaded per day). */
+const fetchAll = () =>
+  Promise.all([
+    storage.loadSettings(),
+    storage.loadFavorites(),
+    storage.loadRecentFoods(),
+    storage.loadCustomUnits(),
+    storage.loadSavedMeals(),
+    storage.loadWeights(),
+  ]);
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [favorites, setFavorites] = useState<Food[]>([]);
+  const [recentFoods, setRecentFoods] = useState<RecentFood[]>([]);
   const [customUnits, setCustomUnits] = useState<CustomUnits>({});
   const [savedMeals, setSavedMeals] = useState<SavedMeal[]>([]);
   const [mealDraft, setMealDraft] = useState<SavedMeal | null>(null);
+  const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [entries, setEntries] = useState<LogEntry[]>([]);
+  /** Bumped after an import so the selected day's log is re-read. */
+  const [dataVersion, setDataVersion] = useState(0);
 
   // Refs hold the latest values so async mutations never act on stale state.
   const favoritesRef = useRef<Food[]>([]);
+  const recentRef = useRef<RecentFood[]>([]);
   const customUnitsRef = useRef<CustomUnits>({});
   const savedMealsRef = useRef<SavedMeal[]>([]);
+  const weightsRef = useRef<WeightEntry[]>([]);
   const selectedDateRef = useRef(selectedDate);
   const entriesRef = useRef<LogEntry[]>([]);
 
-  useEffect(() => {
-    (async () => {
-      const [s, f, u, m] = await Promise.all([
-        storage.loadSettings(),
-        storage.loadFavorites(),
-        storage.loadCustomUnits(),
-        storage.loadSavedMeals(),
-      ]);
-      setSettings(s);
-      favoritesRef.current = f;
-      setFavorites(f);
-      customUnitsRef.current = u;
-      setCustomUnits(u);
-      savedMealsRef.current = m;
-      setSavedMeals(m);
-      setReady(true);
-    })();
+  const applyAll = useCallback((data: Awaited<ReturnType<typeof fetchAll>>) => {
+    const [s, f, r, u, m, w] = data;
+    setSettings(s);
+    favoritesRef.current = f;
+    setFavorites(f);
+    recentRef.current = r;
+    setRecentFoods(r);
+    customUnitsRef.current = u;
+    setCustomUnits(u);
+    savedMealsRef.current = m;
+    setSavedMeals(m);
+    weightsRef.current = w;
+    setWeights(w);
   }, []);
+
+  useEffect(() => {
+    fetchAll().then((data) => {
+      applyAll(data);
+      setReady(true);
+    });
+  }, [applyAll]);
+
+  const reloadAll = useCallback(async () => {
+    setMealDraft(null);
+    applyAll(await fetchAll());
+    setDataVersion((v) => v + 1);
+  }, [applyAll]);
 
   useEffect(() => {
     selectedDateRef.current = selectedDate;
@@ -106,7 +147,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [selectedDate]);
+  }, [selectedDate, dataVersion]);
 
   const saveSettings = useCallback(async (s: Settings) => {
     setSettings(s);
@@ -123,6 +164,19 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     favoritesRef.current = next;
     setFavorites(next);
     storage.saveFavorites(next);
+  }, []);
+
+  /** Move just-logged foods to the front of the recent list (quick adds are skipped). */
+  const pushRecent = useCallback((items: RecentFood[]) => {
+    const fresh = items.filter((i) => !i.food.quick).reverse();
+    if (!fresh.length) return;
+    const seen = new Set<string>();
+    const next = [...fresh, ...recentRef.current]
+      .filter((r) => (seen.has(r.food.id) ? false : (seen.add(r.food.id), true)))
+      .slice(0, MAX_RECENT);
+    recentRef.current = next;
+    setRecentFoods(next);
+    storage.saveRecentFoods(next);
   }, []);
 
   const setUnitsFor = useCallback((foodId: string, fn: (units: FoodUnit[]) => FoodUnit[]) => {
@@ -173,6 +227,24 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [setMeals]
   );
 
+  const mutateWeights = useCallback((fn: (w: WeightEntry[]) => WeightEntry[]) => {
+    const next = fn(weightsRef.current).sort((a, b) => a.date.localeCompare(b.date));
+    weightsRef.current = next;
+    setWeights(next);
+    storage.saveWeights(next);
+  }, []);
+
+  const setWeight = useCallback(
+    (date: string, kg: number) =>
+      mutateWeights((w) => [...w.filter((e) => e.date !== date), { date, kg }]),
+    [mutateWeights]
+  );
+
+  const deleteWeight = useCallback(
+    (date: string) => mutateWeights((w) => w.filter((e) => e.date !== date)),
+    [mutateWeights]
+  );
+
   /** Apply a change to the log for `date`, whether or not it is the selected day. */
   const mutateLog = useCallback(async (date: string, fn: (log: LogEntry[]) => LogEntry[]) => {
     const isSelected = date === selectedDateRef.current;
@@ -186,9 +258,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const addEntry = useCallback(
-    (date: string, meal: MealType, food: Food, grams: number, unit?: EntryUnit) =>
-      mutateLog(date, (log) => [...log, { id: makeId(), meal, food, grams, unit }]),
-    [mutateLog]
+    async (date: string, meal: MealType, food: Food, grams: number, unit?: EntryUnit) => {
+      await mutateLog(date, (log) => [...log, { id: makeId(), meal, food, grams, unit }]);
+      pushRecent([{ food, grams, unit }]);
+    },
+    [mutateLog, pushRecent]
   );
 
   const updateEntry = useCallback(
@@ -203,16 +277,29 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   );
 
   const addEntries = useCallback(
-    (date: string, meal: MealType, items: Omit<MealItem, 'id'>[]) =>
-      mutateLog(date, (log) => [
+    async (date: string, meal: MealType, items: Omit<MealItem, 'id'>[]) => {
+      await mutateLog(date, (log) => [
         ...log,
         ...items.map((i) => ({ id: makeId(), meal, food: i.food, grams: i.grams, unit: i.unit })),
-      ]),
-    [mutateLog]
+      ]);
+      pushRecent(items.map((i) => ({ food: i.food, grams: i.grams, unit: i.unit })));
+    },
+    [mutateLog, pushRecent]
   );
 
   const logSavedMeal = useCallback(
     (date: string, meal: MealType, saved: SavedMeal) => addEntries(date, meal, saved.items),
+    [addEntries]
+  );
+
+  const copyMealFromDate = useCallback(
+    async (fromDate: string, toDate: string, meal: MealType) => {
+      const source =
+        fromDate === selectedDateRef.current ? entriesRef.current : await storage.loadLog(fromDate);
+      const items = source.filter((e) => e.meal === meal);
+      if (items.length) await addEntries(toDate, meal, items);
+      return items.length;
+    },
     [addEntries]
   );
 
@@ -221,9 +308,11 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       ready,
       settings,
       saveSettings,
+      reloadAll,
       favorites,
       isFavorite,
       toggleFavorite,
+      recentFoods,
       customUnits,
       addCustomUnit,
       removeCustomUnit,
@@ -232,6 +321,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       deleteMeal,
       mealDraft,
       setMealDraft,
+      weights,
+      setWeight,
+      deleteWeight,
       selectedDate,
       setSelectedDate,
       entries,
@@ -240,14 +332,17 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       removeEntry,
       addEntries,
       logSavedMeal,
+      copyMealFromDate,
     }),
     [
       ready,
       settings,
       saveSettings,
+      reloadAll,
       favorites,
       isFavorite,
       toggleFavorite,
+      recentFoods,
       customUnits,
       addCustomUnit,
       removeCustomUnit,
@@ -255,6 +350,9 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       saveMeal,
       deleteMeal,
       mealDraft,
+      weights,
+      setWeight,
+      deleteWeight,
       selectedDate,
       entries,
       addEntry,
@@ -262,6 +360,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       removeEntry,
       addEntries,
       logSavedMeal,
+      copyMealFromDate,
     ]
   );
 

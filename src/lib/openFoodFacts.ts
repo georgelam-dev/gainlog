@@ -1,4 +1,4 @@
-import type { Food, NutrientKey, Nutrients } from './types';
+import type { Food, FoodDetails, NutrientKey, NutriScore, Nutrients } from './types';
 import { servingLabelFrom } from './units';
 
 /**
@@ -8,7 +8,24 @@ import { servingLabelFrom } from './units';
  * so callers should not search on every keystroke.
  */
 const USER_AGENT = 'Gainlog/1.0 (Android food tracker)';
-const FIELDS = 'code,product_name,brands,nutriments,serving_quantity,serving_size';
+const FIELDS = 'code,product_name,brands,nutriments,serving_quantity,serving_size,nutriscore_grade';
+/** Extra fields for the detail screen, only fetched for one product at a time. */
+const DETAIL_FIELDS = [
+  FIELDS,
+  'image_front_url',
+  'image_ingredients_url',
+  'quantity',
+  'ingredients_text',
+  'ingredients_text_en',
+  'allergens_tags',
+  'traces_tags',
+  'additives_tags',
+  'labels_tags',
+  'categories_tags',
+  'nova_group',
+  'nutrient_levels',
+  'ingredients_analysis_tags',
+].join(',');
 const PAGE_SIZE = 25;
 
 type OffNutriments = Record<string, number | string | undefined>;
@@ -20,7 +37,28 @@ type OffProduct = {
   nutriments?: OffNutriments;
   serving_quantity?: number | string;
   serving_size?: string;
+  nutriscore_grade?: string;
 };
+
+type OffDetailProduct = OffProduct & {
+  image_front_url?: string;
+  image_ingredients_url?: string;
+  quantity?: string;
+  ingredients_text?: string;
+  ingredients_text_en?: string;
+  allergens_tags?: string[];
+  traces_tags?: string[];
+  additives_tags?: string[];
+  labels_tags?: string[];
+  categories_tags?: string[];
+  nova_group?: number | string;
+  nutrient_levels?: Record<string, string>;
+  ingredients_analysis_tags?: string[];
+};
+
+const GRADES = ['a', 'b', 'c', 'd', 'e'];
+const toGrade = (g?: string): NutriScore | undefined =>
+  g && GRADES.includes(g.toLowerCase()) ? (g.toLowerCase() as NutriScore) : undefined;
 
 function num(v: unknown): number | undefined {
   const n = typeof v === 'string' ? parseFloat(v) : typeof v === 'number' ? v : NaN;
@@ -83,8 +121,61 @@ function toFood(p: OffProduct): Food | null {
     nutrients: toNutrients(n),
     servingG: servingG && servingG > 0 ? servingG : undefined,
     servingLabel: servingG && servingG > 0 ? servingLabelFrom(p.serving_size) : undefined,
+    nutriscore: toGrade(p.nutriscore_grade),
   };
 }
+
+/** "en:soybeans" -> "Soybeans", "en:e322i" -> "E322i". */
+function tagLabel(tag: string): string {
+  const raw = tag.includes(':') ? tag.slice(tag.indexOf(':') + 1) : tag;
+  const words = raw.replace(/-/g, ' ').trim();
+  if (/^e\d/i.test(words)) return words.toUpperCase().replace(/I$/, 'i');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+const tags = (list?: string[]) => [...new Set((list ?? []).map(tagLabel).filter(Boolean))];
+
+/** Analysis tags look like "en:vegan", "en:non-vegan", "en:maybe-vegan", "en:vegan-status-unknown". */
+function analysis(list: string[] | undefined, yes: string, no: string): boolean | undefined {
+  if (list?.includes(`en:${yes}`)) return true;
+  if (list?.includes(`en:${no}`)) return false;
+  return undefined;
+}
+
+function toDetails(p: OffDetailProduct): FoodDetails {
+  const levels: FoodDetails['levels'] = {};
+  for (const k of ['fat', 'saturated-fat', 'sugars', 'salt'] as const) {
+    const v = p.nutrient_levels?.[k];
+    if (v === 'low' || v === 'moderate' || v === 'high') levels[k] = v;
+  }
+  const nova = num(p.nova_group);
+  const ingredients = (p.ingredients_text_en || p.ingredients_text)?.trim();
+  return {
+    imageUrl: p.image_front_url || undefined,
+    ingredientsImageUrl: p.image_ingredients_url || undefined,
+    quantity: p.quantity?.trim() || undefined,
+    ingredients: ingredients || undefined,
+    allergens: tags(p.allergens_tags),
+    traces: tags(p.traces_tags),
+    additives: tags(p.additives_tags),
+    labels: tags(p.labels_tags),
+    // Most specific categories are last; keep the English ones, a few is plenty.
+    categories: tags((p.categories_tags ?? []).filter((t) => t.startsWith('en:')))
+      .slice(-4)
+      .reverse(),
+    nova: nova && nova >= 1 && nova <= 4 ? nova : undefined,
+    levels,
+    vegan: analysis(p.ingredients_analysis_tags, 'vegan', 'non-vegan'),
+    vegetarian: analysis(p.ingredients_analysis_tags, 'vegetarian', 'non-vegetarian'),
+    palmOil: analysis(p.ingredients_analysis_tags, 'palm-oil', 'palm-oil-free'),
+  };
+}
+
+/** Is this food an Open Food Facts product (i.e. has a barcode we can look up)? */
+export const isOffProduct = (food: Pick<Food, 'id' | 'quick'>) => !food.quick && /^\d{4,}$/.test(food.id);
+
+export const offProductUrl = (code: string) =>
+  `https://world.openfoodfacts.org/product/${encodeURIComponent(code)}`;
 
 function dedupe(foods: Food[]): Food[] {
   const seen = new Set<string>();
@@ -121,15 +212,35 @@ export async function searchFoods(query: string, signal?: AbortSignal): Promise<
   }
 }
 
+/** Full product info for the detail screen. Returns null if OFF doesn't know the barcode. */
+export async function fetchFoodDetails(
+  code: string,
+  signal?: AbortSignal
+): Promise<{ food: Food | null; details: FoodDetails } | null> {
+  const data = await getJSONOrNull(
+    `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=${DETAIL_FIELDS}`,
+    signal
+  );
+  if (!data || data.status !== 1 || !data.product) return null;
+  const p: OffDetailProduct = { ...data.product, code };
+  return { food: toFood(p), details: toDetails(p) };
+}
+
+async function getJSONOrNull(url: string, signal?: AbortSignal): Promise<any> {
+  const res = await fetch(url, {
+    signal,
+    headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
 
 /** Look up one product by its barcode. Returns null if OFF doesn't know it (or lacks calories). */
 export async function fetchFoodByBarcode(code: string, signal?: AbortSignal): Promise<Food | null> {
-  const res = await fetch(
+  const data = await getJSONOrNull(
     `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}.json?fields=${FIELDS}`,
-    { signal, headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' } }
+    signal
   );
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data = await res.json();
   return data?.status === 1 && data.product ? toFood({ ...data.product, code }) : null;
 }
