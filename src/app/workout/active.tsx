@@ -1,8 +1,10 @@
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Pressable, StyleSheet, View } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 
 import { ActionMenu, type MenuAction } from '@/components/ActionMenu';
+import { ReorderableList } from '@/components/ReorderableList';
 import { Elapsed } from '@/components/workout/Elapsed';
 import { ExerciseCard } from '@/components/workout/ExerciseCard';
 import { RestTimerBar } from '@/components/workout/RestTimerBar';
@@ -19,6 +21,7 @@ export default function ActiveWorkoutScreen() {
     active,
     renameActive,
     removeExercise,
+    moveExercise,
     setExerciseRest,
     addSet,
     removeSet,
@@ -29,6 +32,7 @@ export default function ActiveWorkoutScreen() {
     lastSetsFor,
   } = useWorkout();
   const [menu, setMenu] = useState<{ ex: WorkoutExercise; kind: 'main' | 'rest' } | null>(null);
+  const [dragging, setDragging] = useState(false);
 
   if (!active) {
     return (
@@ -126,7 +130,10 @@ export default function ActiveWorkoutScreen() {
         }}
       />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          scrollEnabled={!dragging}>
           <TextInput
             defaultValue={active.name}
             onEndEditing={(e) => renameActive(e.nativeEvent.text.trim() || active.name)}
@@ -137,21 +144,33 @@ export default function ActiveWorkoutScreen() {
           />
           <Text style={styles.muted}>
             {done} set{done === 1 ? '' : 's'} done · Tick a set to start its rest timer
+            {active.exercises.length > 1 ? '\nHold an exercise name and drag to reorder.' : ''}
           </Text>
 
-          {active.exercises.map((ex) => (
-            <ExerciseCard
-              key={ex.id}
-              exercise={ex}
-              lastSets={lastSetsFor(ex.exerciseId)}
-              unit={settings.weightUnit}
-              onMenu={() => setMenu({ ex, kind: 'main' })}
-              onAddSet={() => addSet(ex.id)}
-              onRemoveSet={(setId) => removeSet(ex.id, setId)}
-              onUpdateSet={(setId, patch) => updateSet(ex.id, setId, patch)}
-              onToggleSet={(setId) => onToggle(ex.id, setId)}
-            />
-          ))}
+          <ReorderableList
+            items={active.exercises}
+            keyOf={(ex) => ex.id}
+            titleOf={(ex) => ex.name}
+            onReorder={moveExercise}
+            onDraggingChange={setDragging}
+            dragAreaHeight={64}
+            renderItem={(ex, i) => (
+              <ExerciseCard
+                exercise={ex}
+                onMove={(delta) => {
+                  const to = i + delta;
+                  if (to >= 0 && to < active.exercises.length) moveExercise(i, to);
+                }}
+                lastSets={lastSetsFor(ex.exerciseId)}
+                unit={settings.weightUnit}
+                onMenu={() => setMenu({ ex, kind: 'main' })}
+                onAddSet={() => addSet(ex.id)}
+                onRemoveSet={(setId) => removeSet(ex.id, setId)}
+                onUpdateSet={(setId, patch) => updateSet(ex.id, setId, patch)}
+                onToggleSet={(setId) => onToggle(ex.id, setId)}
+              />
+            )}
+          />
 
           <Pressable
             style={styles.addBtn}

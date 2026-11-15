@@ -1,5 +1,3 @@
-import { Platform } from 'react-native';
-
 /**
  * Chalk on steel: cool slate surfaces, chalk-white type, a soft blue for
  * anything you can act on, and macro colours borrowed from calibrated plates.
@@ -43,18 +41,11 @@ export const radii = { steel: 4, section: radius, sheet: 18, pill: 999 };
 export const spacing = 16;
 
 /**
- * System font families — nothing to load. `fontWeight` picks the face.
+ * Font families registered in `useAppFonts`. `fontWeight` picks the face.
  * Body is applied by default through `@/components/ui/Text`; use display for
  * numbers and titles at 20px and up.
  */
-const systemSans = Platform.select({
-  ios: 'Helvetica Neue',
-  // Helvetica Neue isn't on Android and can't be bundled without a licence; Roboto is the closest system face.
-  android: 'sans-serif',
-  default: '"Helvetica Neue", Helvetica, Arial, sans-serif',
-});
-
 export const fonts = {
-  body: systemSans,
-  display: systemSans,
+  body: 'Nunito',
+  display: 'Nunito',
 };

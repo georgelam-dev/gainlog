@@ -11,6 +11,7 @@ import {
 } from 'react';
 
 import { RestTicker } from '@/components/workout/RestTicker';
+import { moveItem } from '@/lib/array';
 import { makeId } from '@/lib/date';
 import { allExercises } from '@/lib/exercises';
 import { cancelRestEnd, ensureRestAlerts, scheduleRestEnd } from '@/lib/restAlerts';
@@ -57,6 +58,8 @@ type WorkoutData = {
   renameActive: (name: string) => void;
   addExercises: (ids: string[]) => void;
   removeExercise: (exId: string) => void;
+  /** Move an exercise in the active workout from one position to another. */
+  moveExercise: (from: number, to: number) => void;
   /** Set the rest timer for an exercise in the active workout (and remember it for next time). */
   setExerciseRest: (exId: string, sec: number) => void;
   /** Remembered rest timer for an exercise (2 minutes until changed). */
@@ -348,6 +351,11 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     [mutateActive]
   );
 
+  const moveExercise = useCallback(
+    (from: number, to: number) => mutateActive((w) => ({ ...w, exercises: moveItem(w.exercises, from, to) })),
+    [mutateActive]
+  );
+
   const rememberRest = useCallback((exerciseId: string, sec: number) => {
     if (restByExerciseRef.current[exerciseId] === sec) return;
     const next = { ...restByExerciseRef.current, [exerciseId]: sec };
@@ -462,6 +470,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       renameActive,
       addExercises,
       removeExercise,
+      moveExercise,
       setExerciseRest,
       restFor,
       rememberRest,
@@ -496,6 +505,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       renameActive,
       addExercises,
       removeExercise,
+      moveExercise,
       setExerciseRest,
       restFor,
       rememberRest,

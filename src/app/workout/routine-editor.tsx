@@ -1,16 +1,22 @@
 import { router, Stack } from 'expo-router';
-import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, KeyboardAvoidingView, Pressable, StyleSheet, View } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
+
+import { ReorderableList } from '@/components/ReorderableList';
 
 import { RestChips } from '@/components/workout/RestChips';
 import { colors, radius, spacing, fonts } from '@/constants/theme';
 import { useWorkout } from '@/context/WorkoutProvider';
 import type { RoutineExercise } from '@/lib/workoutTypes';
 import { Text, TextInput } from '@/components/ui/Text';
+import { moveItem } from '@/lib/array';
 
 const MAX_SETS = 20;
 
 export default function RoutineEditorScreen() {
   const { routineDraft: draft, setRoutineDraft, saveRoutine, routines, rememberRest } = useWorkout();
+  const [dragging, setDragging] = useState(false);
 
   if (!draft) {
     return (
@@ -28,15 +34,19 @@ export default function RoutineEditorScreen() {
       d ? { ...d, exercises: d.exercises.map((e, j) => (j === i ? { ...e, ...patch } : e)) } : d
     );
 
-  const move = (i: number, dir: -1 | 1) =>
+  const move = (from: number, to: number) =>
     setRoutineDraft((d) => {
-      if (!d) return d;
-      const j = i + dir;
-      if (j < 0 || j >= d.exercises.length) return d;
-      const list = [...d.exercises];
-      [list[i], list[j]] = [list[j], list[i]];
-      return { ...d, exercises: list };
+      if (!d || to < 0 || to >= d.exercises.length) return d;
+      return { ...d, exercises: moveItem(d.exercises, from, to) };
     });
+
+  // Routine entries have no id; key by exercise plus occurrence so a card keeps its identity when moved.
+  const seen = new Map<string, number>();
+  const keys = draft.exercises.map((e) => {
+    const n = seen.get(e.exerciseId) ?? 0;
+    seen.set(e.exerciseId, n + 1);
+    return `${e.exerciseId}#${n}`;
+  });
 
   const remove = (i: number) =>
     setRoutineDraft((d) => (d ? { ...d, exercises: d.exercises.filter((_, j) => j !== i) } : d));
@@ -63,7 +73,10 @@ export default function RoutineEditorScreen() {
           ),
         }}
       />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        scrollEnabled={!dragging}>
         <TextInput
           value={draft.name}
           onChangeText={(name) => setRoutineDraft((d) => (d ? { ...d, name } : d))}
@@ -73,51 +86,61 @@ export default function RoutineEditorScreen() {
           autoFocus={isNew && !draft.name}
         />
 
-        {draft.exercises.map((e, i) => (
-          <View key={`${e.exerciseId}-${i}`} style={styles.card}>
-            <View style={styles.rowBetween}>
-              <Text style={styles.exName} numberOfLines={2}>
-                {e.name}
-              </Text>
-              <View style={styles.iconRow}>
-                <IconBtn label="↑" onPress={() => move(i, -1)} disabled={i === 0} a11y="Move up" />
-                <IconBtn
-                  label="↓"
-                  onPress={() => move(i, 1)}
-                  disabled={i === draft.exercises.length - 1}
-                  a11y="Move down"
-                />
+        {draft.exercises.length > 1 && (
+          <Text style={styles.muted}>Hold an exercise name and drag to reorder.</Text>
+        )}
+
+        <ReorderableList
+          items={draft.exercises}
+          keyOf={(_, i) => keys[i]}
+          titleOf={(e) => e.name}
+          onReorder={move}
+          onDraggingChange={setDragging}
+          dragAreaHeight={50}
+          renderItem={(e, i) => (
+            <View style={styles.card}>
+              <View style={styles.rowBetween}>
+                <Text
+                  style={styles.exName}
+                  numberOfLines={2}
+                  accessibilityActions={[
+                    { name: 'moveUp', label: 'Move up' },
+                    { name: 'moveDown', label: 'Move down' },
+                  ]}
+                  onAccessibilityAction={(ev) => move(i, ev.nativeEvent.actionName === 'moveUp' ? i - 1 : i + 1)}>
+                  {e.name}
+                </Text>
                 <IconBtn label="✕" onPress={() => remove(i)} a11y={`Remove ${e.name}`} danger />
               </View>
-            </View>
-            <View style={styles.rowBetween}>
-              <Text style={styles.label}>Sets</Text>
-              <View style={styles.stepper}>
-                <IconBtn
-                  label="−"
-                  onPress={() => patchExercise(i, { sets: Math.max(1, e.sets - 1) })}
-                  disabled={e.sets <= 1}
-                  a11y="Fewer sets"
-                />
-                <Text style={styles.stepValue}>{e.sets}</Text>
-                <IconBtn
-                  label="+"
-                  onPress={() => patchExercise(i, { sets: Math.min(MAX_SETS, e.sets + 1) })}
-                  disabled={e.sets >= MAX_SETS}
-                  a11y="More sets"
-                />
+              <View style={styles.rowBetween}>
+                <Text style={styles.label}>Sets</Text>
+                <View style={styles.stepper}>
+                  <IconBtn
+                    label="−"
+                    onPress={() => patchExercise(i, { sets: Math.max(1, e.sets - 1) })}
+                    disabled={e.sets <= 1}
+                    a11y="Fewer sets"
+                  />
+                  <Text style={styles.stepValue}>{e.sets}</Text>
+                  <IconBtn
+                    label="+"
+                    onPress={() => patchExercise(i, { sets: Math.min(MAX_SETS, e.sets + 1) })}
+                    disabled={e.sets >= MAX_SETS}
+                    a11y="More sets"
+                  />
+                </View>
               </View>
+              <Text style={styles.label}>Rest timer</Text>
+              <RestChips
+                value={e.restSec}
+                onChange={(restSec) => {
+                  patchExercise(i, { restSec });
+                  rememberRest(e.exerciseId, restSec);
+                }}
+              />
             </View>
-            <Text style={styles.label}>Rest timer</Text>
-            <RestChips
-              value={e.restSec}
-              onChange={(restSec) => {
-                patchExercise(i, { restSec });
-                rememberRest(e.exerciseId, restSec);
-              }}
-            />
-          </View>
-        ))}
+          )}
+        />
 
         <Pressable
           style={styles.addBtn}
@@ -164,7 +187,6 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   exName: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.primary },
   label: { fontSize: 13, fontWeight: '600', color: colors.text },
-  iconRow: { flexDirection: 'row', gap: 6 },
   iconBtn: {
     width: 32,
     height: 32,

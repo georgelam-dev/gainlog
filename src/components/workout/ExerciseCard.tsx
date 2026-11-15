@@ -14,6 +14,8 @@ type Props = {
   lastSets: WorkoutSet[];
   unit: WeightUnit;
   onMenu: () => void;
+  /** Screen-reader move up (-1) / down (+1); sighted users drag the header instead. */
+  onMove: (delta: -1 | 1) => void;
   onAddSet: () => void;
   onRemoveSet: (setId: string) => void;
   onUpdateSet: (setId: string, patch: Partial<Omit<WorkoutSet, 'id'>>) => void;
@@ -30,6 +32,7 @@ export function ExerciseCard({
   lastSets,
   unit,
   onMenu,
+  onMove,
   onAddSet,
   onRemoveSet,
   onUpdateSet,
@@ -45,7 +48,15 @@ export function ExerciseCard({
     <View style={styles.card}>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{exercise.name}</Text>
+          <Text
+            style={styles.name}
+            accessibilityActions={[
+              { name: 'moveUp', label: 'Move up' },
+              { name: 'moveDown', label: 'Move down' },
+            ]}
+            onAccessibilityAction={(e) => onMove(e.nativeEvent.actionName === 'moveUp' ? -1 : 1)}>
+            {exercise.name}
+          </Text>
           <Text style={styles.muted}>Rest {formatRest(exercise.restSec)}</Text>
         </View>
         <Pressable onPress={onMenu} hitSlop={12} accessibilityLabel={`${exercise.name} options`}>

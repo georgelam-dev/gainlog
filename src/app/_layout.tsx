@@ -1,12 +1,20 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { useAppFonts } from '@/constants/fonts';
 import { colors, fonts } from '@/constants/theme';
 import { AppDataProvider } from '@/context/AppDataProvider';
 import { WorkoutProvider } from '@/context/WorkoutProvider';
 
 export default function RootLayout() {
+  const fontsReady = useAppFonts();
+  // Hold on the background for the few ms the fonts take to register.
+  if (!fontsReady) return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
+
   return (
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
     <AppDataProvider>
       <WorkoutProvider>
         <StatusBar style="light" />
@@ -35,5 +43,6 @@ export default function RootLayout() {
         </Stack>
       </WorkoutProvider>
     </AppDataProvider>
+    </GestureHandlerRootView>
   );
 }
