@@ -142,6 +142,8 @@ export type Settings = {
   fat: number;
   /** kg or lb for bodyweight and workout weights; everything is stored in kg. */
   weightUnit: WeightUnit;
+  /** Daily water goal, always stored in ml. */
+  waterGoalMl: number;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -151,4 +153,5 @@ export const DEFAULT_SETTINGS: Settings = {
   protein: 25,
   fat: 25,
   weightUnit: 'kg',
+  waterGoalMl: 2500,
 };

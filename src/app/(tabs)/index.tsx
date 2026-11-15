@@ -7,11 +7,13 @@ import { DateNav } from '@/components/DateNav';
 import { MacroSummary } from '@/components/MacroSummary';
 import { MealSection } from '@/components/MealSection';
 import { QuantitySheet } from '@/components/QuantitySheet';
+import { WaterCard } from '@/components/WaterCard';
 import { spacing } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
 import { makeId, shiftDateKey, todayKey } from '@/lib/date';
 import { macroTargets, sumEntries } from '@/lib/nutrition';
 import { MEALS, type LogEntry, type MealType } from '@/lib/types';
+import { waterUnitFor } from '@/lib/water';
 
 export default function HomeScreen() {
   const {
@@ -24,6 +26,9 @@ export default function HomeScreen() {
     setMealDraft,
     addEntries,
     copyMealFromDate,
+    water,
+    addWater,
+    undoWater,
   } = useAppData();
   const isToday = selectedDate === todayKey();
   const [editing, setEditing] = useState<LogEntry | null>(null);
@@ -105,6 +110,13 @@ export default function HomeScreen() {
           />
           );
         })}
+        <WaterCard
+          drinks={water}
+          goalMl={settings.waterGoalMl}
+          unit={waterUnitFor(settings.weightUnit)}
+          onAdd={addWater}
+          onUndo={undoWater}
+        />
       </ScrollView>
 
       <QuantitySheet

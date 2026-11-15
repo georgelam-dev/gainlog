@@ -28,6 +28,12 @@ export const colors = {
   /** a completed set */
   done: '#3FA65A',
   doneWash: 'rgba(63, 166, 90, 0.14)',
+  /** personal record badge */
+  pr: '#F2C230',
+  /** water tracker */
+  water: '#4FC3E8',
+  /** superset / circuit bars, in group order */
+  groups: ['#6AA5FF', '#F2C230', '#3FA65A', '#E0433F', '#B48CF2'],
   /** traffic-light states (food levels, calories vs goal) — not macro colours */
   good: '#3FA65A',
   caution: '#F0943A',

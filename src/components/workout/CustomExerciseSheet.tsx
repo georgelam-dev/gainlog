@@ -3,8 +3,10 @@ import { KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, View } 
 
 import { colors, radius, spacing, fonts } from '@/constants/theme';
 import { capitalize, EQUIPMENT, MUSCLES } from '@/lib/exercises';
-import type { Exercise } from '@/lib/workoutTypes';
+import type { Exercise, Tracking } from '@/lib/workoutTypes';
 import { Text, TextInput } from '@/components/ui/Text';
+
+const TRACKING_OPTIONS = ['reps', 'time (e.g. plank)'] as const;
 
 type Props = {
   visible: boolean;
@@ -25,6 +27,7 @@ function Body({ initialName = '', onCreate, onClose }: Omit<Props, 'visible'>) {
   const [name, setName] = useState(initialName);
   const [muscle, setMuscle] = useState<string | null>(null);
   const [equipment, setEquipment] = useState<string | null>(null);
+  const [tracking, setTracking] = useState<Tracking>('reps');
   const valid = name.trim().length > 0 && muscle !== null;
 
   return (
@@ -44,13 +47,19 @@ function Body({ initialName = '', onCreate, onClose }: Omit<Props, 'visible'>) {
         <Chips options={MUSCLES} value={muscle} onChange={setMuscle} />
         <Text style={styles.label}>Equipment (optional)</Text>
         <Chips options={EQUIPMENT} value={equipment} onChange={(v) => setEquipment(v === equipment ? null : v)} />
+        <Text style={styles.label}>Log each set by</Text>
+        <Chips
+          options={TRACKING_OPTIONS}
+          value={tracking === 'time' ? 'time (e.g. plank)' : 'reps'}
+          onChange={(v) => setTracking(v === 'reps' ? 'reps' : 'time')}
+        />
 
         <Pressable
           style={[styles.primaryBtn, !valid && { opacity: 0.4 }]}
           disabled={!valid}
           onPress={() =>
             muscle &&
-            onCreate({ name: name.trim(), muscle, equipment: equipment ?? undefined, category: 'strength' })
+            onCreate({ name: name.trim(), muscle, equipment: equipment ?? undefined, category: 'strength', tracking })
           }>
           <Text style={styles.primaryText}>Create exercise</Text>
         </Pressable>

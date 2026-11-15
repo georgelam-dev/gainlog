@@ -9,7 +9,7 @@ import { useWorkout } from '@/context/WorkoutProvider';
 import { toDateKey } from '@/lib/date';
 import { capitalize } from '@/lib/exercises';
 import { fmtLoad, toUnit } from '@/lib/weightUnits';
-import { workoutDateLabel } from '@/lib/workout';
+import { formatSec, formatSet, PR_LABELS, workoutDateLabel } from '@/lib/workout';
 import { Text } from '@/components/ui/Text';
 
 type Metric = 'e1rm' | 'weight';
@@ -17,37 +17,44 @@ type Metric = 'e1rm' | 'weight';
 export default function ExerciseHistoryScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { settings } = useAppData();
-  const { getExercise, historyFor } = useWorkout();
+  const { getExercise, historyFor, trackingFor, historyPRs } = useWorkout();
   const unit = settings.weightUnit;
   const [metric, setMetric] = useState<Metric>('e1rm');
 
   const exercise = getExercise(id);
   const sessions = historyFor(id);
   const name = exercise?.name ?? sessions[0]?.exerciseName ??'Exercise';
+  const timed = trackingFor(id) === 'time';
 
   const stats = useMemo(() => {
     let bestKg: number | undefined;
     let bestE1rm: number | undefined;
+    let bestSec: number | undefined;
     let mostReps = 0;
     for (const s of sessions) {
       if (s.bestKg !== undefined) bestKg = Math.max(bestKg ?? 0, s.bestKg);
       if (s.bestE1rm !== undefined) bestE1rm = Math.max(bestE1rm ?? 0, s.bestE1rm);
-      for (const set of s.sets) mostReps = Math.max(mostReps, set.reps ?? 0);
+      if (s.bestSec !== undefined) bestSec = Math.max(bestSec ?? 0, s.bestSec);
+      for (const set of s.sets) if (set.type !== 'warmup') mostReps = Math.max(mostReps, set.reps ?? 0);
     }
-    return { bestKg, bestE1rm, mostReps };
+    return { bestKg, bestE1rm, bestSec, mostReps };
   }, [sessions]);
 
   const points = useMemo(
     () =>
       [...sessions]
         .reverse()
-        .map((s) => ({ date: toDateKey(new Date(s.date)), kg: metric === 'e1rm' ? s.bestE1rm : s.bestKg }))
-        .filter((p): p is { date: string; kg: number } => p.kg !== undefined)
-        .map((p) => ({ date: p.date, value: toUnit(p.kg, unit) })),
-    [sessions, metric, unit]
+        .map((s) => ({
+          date: toDateKey(new Date(s.date)),
+          v: timed ? s.bestSec : metric === 'e1rm' ? s.bestE1rm : s.bestKg,
+        }))
+        .filter((p): p is { date: string; v: number } => p.v !== undefined)
+        .map((p) => ({ date: p.date, value: timed ? p.v : toUnit(p.v, unit) })),
+    [sessions, metric, unit, timed]
   );
 
-  const weighted = stats.bestKg !== undefined;
+  const weighted = !timed && stats.bestKg !== undefined;
+  const prCount = sessions.reduce((n, s) => n + s.sets.filter((set) => historyPRs.has(set.id)).length, 0);
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
@@ -70,7 +77,9 @@ export default function ExerciseHistoryScreen() {
       ) : (
         <>
           <View style={styles.statsRow}>
-            {weighted ? (
+            {timed ? (
+              <Stat label="Longest" value={formatSec(stats.bestSec ?? 0)} unit="" />
+            ) : weighted ? (
               <>
                 <Stat label="Best weight" value={`${fmtLoad(toUnit(stats.bestKg ?? 0, unit))}`} unit={unit} />
                 <Stat label="Est. 1RM" value={`${fmtLoad(toUnit(stats.bestE1rm ?? 0, unit))}`} unit={unit} />
@@ -79,7 +88,20 @@ export default function ExerciseHistoryScreen() {
               <Stat label="Most reps" value={String(stats.mostReps)} unit="" />
             )}
             <Stat label="Sessions" value={String(sessions.length)} unit="" />
+            {prCount > 0 && <Stat label="PRs" value={String(prCount)} unit="" />}
           </View>
+
+          {timed && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Longest set</Text>
+              <TrendChart
+                points={points}
+                format={(v) => formatSec(Math.round(v))}
+                emptyText="Do this exercise in two workouts to see a trend."
+                minSpan={30}
+              />
+            </View>
+          )}
 
           {weighted && (
             <View style={styles.card}>
@@ -124,11 +146,22 @@ export default function ExerciseHistoryScreen() {
                   </Text>
                 </View>
                 <Text style={styles.sets}>
-                  {s.sets
-                    .map((set) =>
-                      set.kg !== undefined ? `${fmtLoad(toUnit(set.kg, unit))} × ${set.reps}` : `${set.reps} reps`
-                    )
-                    .join('   ·   ')}
+                  {s.sets.map((set, i) => {
+                    const pr = historyPRs.get(set.id);
+                    return (
+                      <Text key={set.id}>
+                        {i > 0 ? '   ·   ' : ''}
+                        {set.type === 'warmup' ? <Text style={styles.muted}>W </Text> : null}
+                        {formatSet(set, s.tracking, unit)}
+                        {pr ? (
+                          <Text style={styles.pr} accessibilityLabel={pr.map((k) => PR_LABELS[k]).join(', ')}>
+                            {' '}
+                            PR
+                          </Text>
+                        ) : null}
+                      </Text>
+                    );
+                  })}
                 </Text>
               </Pressable>
             ))}
@@ -174,4 +207,5 @@ const styles = StyleSheet.create({
   },
   sessionDate: { fontSize: 15, fontWeight: '700', color: colors.text },
   sets: { fontSize: 14, color: colors.text, fontVariant: ['tabular-nums'], lineHeight: 20 },
+  pr: { color: colors.pr, fontWeight: '900', fontSize: 12 },
 });

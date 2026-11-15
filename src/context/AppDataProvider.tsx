@@ -70,6 +70,12 @@ type AppData = {
   logSavedMeal: (date: string, meal: MealType, saved: SavedMeal) => Promise<void>;
   /** Copy one meal slot from another day; resolves to the number of items copied. */
   copyMealFromDate: (fromDate: string, toDate: string, meal: MealType) => Promise<number>;
+
+  /** Drinks logged on the selected day, in ml, oldest first. */
+  water: number[];
+  addWater: (ml: number) => void;
+  /** Remove the most recent drink on the selected day. */
+  undoWater: () => void;
 };
 
 const AppDataContext = createContext<AppData | null>(null);
@@ -96,6 +102,10 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
   const [weights, setWeights] = useState<WeightEntry[]>([]);
   const [selectedDate, setSelectedDate] = useState(todayKey);
   const [entries, setEntries] = useState<LogEntry[]>([]);
+  const [water, setWater] = useState<number[]>([]);
+  const waterRef = useRef<number[]>([]);
+  /** Which day `waterRef` holds; null while that day is loading. */
+  const waterDateRef = useRef<string | null>(null);
   /** Bumped after an import so the selected day's log is re-read. */
   const [dataVersion, setDataVersion] = useState(0);
 
@@ -143,6 +153,13 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       entriesRef.current = log;
       setEntries(log);
+    });
+    waterDateRef.current = null;
+    storage.loadWater(selectedDate).then((drinks) => {
+      if (cancelled || waterDateRef.current === selectedDate) return;
+      waterRef.current = drinks;
+      waterDateRef.current = selectedDate;
+      setWater(drinks);
     });
     return () => {
       cancelled = true;
@@ -303,6 +320,31 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     [addEntries]
   );
 
+  // Changes run one after another so quick double-taps can't read the same old list.
+  const waterQueue = useRef<Promise<void>>(Promise.resolve());
+  const mutateWater = useCallback((fn: (drinks: number[]) => number[]) => {
+    const date = selectedDateRef.current;
+    const apply = async () => {
+      // The day may have just changed and its drinks not loaded yet; never write another day's list.
+      const current = waterDateRef.current === date ? waterRef.current : await storage.loadWater(date);
+      const next = fn(current);
+      if (selectedDateRef.current === date) {
+        waterRef.current = next;
+        waterDateRef.current = date;
+        setWater(next);
+      }
+      await storage.saveWater(date, next);
+    };
+    waterQueue.current = waterQueue.current.then(apply).catch(() => {});
+  }, []);
+  const addWater = useCallback(
+    (ml: number) => {
+      if (ml > 0) mutateWater((d) => [...d, Math.round(ml)]);
+    },
+    [mutateWater]
+  );
+  const undoWater = useCallback(() => mutateWater((d) => d.slice(0, -1)), [mutateWater]);
+
   const value = useMemo<AppData>(
     () => ({
       ready,
@@ -333,8 +375,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       addEntries,
       logSavedMeal,
       copyMealFromDate,
+      water,
+      addWater,
+      undoWater,
     }),
     [
+      water,
+      addWater,
+      undoWater,
       ready,
       settings,
       saveSettings,

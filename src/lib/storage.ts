@@ -28,6 +28,7 @@ const KEYS = {
   activeWorkout: 'activeWorkout',
   exerciseRest: 'exerciseRest',
   log: (date: string) => `log:${date}`,
+  water: (date: string) => `water:${date}`,
 };
 
 async function readJSON<T>(key: string, fallback: T): Promise<T> {
@@ -90,6 +91,10 @@ export const storage = {
 
   loadLog: (date: string) => readJSON<LogEntry[]>(KEYS.log(date), []),
   saveLog: (date: string, entries: LogEntry[]) => writeJSON(KEYS.log(date), entries),
+
+  /** Each drink logged that day, in ml (a list so the last one can be undone). */
+  loadWater: (date: string) => readJSON<number[]>(KEYS.water(date), []),
+  saveWater: (date: string, drinks: number[]) => writeJSON(KEYS.water(date), drinks),
 };
 
 /** Backup file format: every stored key, as its raw JSON string. */

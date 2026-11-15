@@ -1,3 +1,4 @@
+import * as Haptics from 'expo-haptics';
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Pressable, StyleSheet, View } from 'react-native';
@@ -11,9 +12,13 @@ import { RestTimerBar } from '@/components/workout/RestTimerBar';
 import { colors, radius, spacing, fonts } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
 import { useWorkout } from '@/context/WorkoutProvider';
-import { countDoneSets, formatRest } from '@/lib/workout';
+import { continuesGroup, countDoneSets, formatRest, groupInfo, SET_TYPES } from '@/lib/workout';
 import { REST_PRESETS, type WorkoutExercise } from '@/lib/workoutTypes';
 import { Text, TextInput } from '@/components/ui/Text';
+
+type Menu =
+  | { ex: WorkoutExercise; kind: 'main' | 'rest' }
+  | { ex: WorkoutExercise; kind: 'set'; setId: string; label: string };
 
 export default function ActiveWorkoutScreen() {
   const { settings } = useAppData();
@@ -30,8 +35,13 @@ export default function ActiveWorkoutScreen() {
     finishWorkout,
     discardWorkout,
     lastSetsFor,
+    activePRs,
+    setExerciseTracking,
+    linkExercise,
+    unlinkExercise,
+    setSetType,
   } = useWorkout();
-  const [menu, setMenu] = useState<{ ex: WorkoutExercise; kind: 'main' | 'rest' } | null>(null);
+  const [menu, setMenu] = useState<Menu | null>(null);
   const [dragging, setDragging] = useState(false);
 
   if (!active) {
@@ -83,17 +93,37 @@ export default function ActiveWorkoutScreen() {
       },
     ]);
 
-  const onToggle = (exId: string, setId: string) => {
-    if (toggleSetDone(exId, setId) === 'needs-reps') {
-      Alert.alert('Enter reps', 'Type how many reps you did before ticking the set.');
+  const groups = groupInfo(active.exercises);
+
+  const onToggle = (ex: WorkoutExercise, setId: string) => {
+    const result = toggleSetDone(ex.id, setId);
+    if (result === 'pr') Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    else if (result === 'needs-value') {
+      Alert.alert(
+        ex.tracking === 'time' ? 'Enter a time' : 'Enter reps',
+        ex.tracking === 'time'
+          ? 'Type how long the set lasted before ticking it, e.g. 1 3 0 for 1:30.'
+          : 'Type how many reps you did before ticking the set.'
+      );
     }
   };
 
   let actions: MenuAction[] = [];
   if (menu?.kind === 'main') {
     const ex = menu.ex;
+    const i = active.exercises.findIndex((e) => e.id === ex.id);
+    const hasNext = i >= 0 && i < active.exercises.length - 1;
+    const timed = ex.tracking === 'time';
     actions = [
       { label: `Rest timer: ${formatRest(ex.restSec)}`, onPress: () => setMenu({ ex, kind: 'rest' }) },
+      ...(hasNext && !continuesGroup(active.exercises, i)
+        ? [{ label: `Superset with ${active.exercises[i + 1].name}`, onPress: () => linkExercise(ex.id) }]
+        : []),
+      ...(groups[i] ? [{ label: 'Remove from superset', onPress: () => unlinkExercise(ex.id) }] : []),
+      {
+        label: timed ? 'Track reps instead of time' : 'Track time instead of reps',
+        onPress: () => setExerciseTracking(ex.id, timed ? 'reps' : 'time'),
+      },
       {
         label: 'View history',
         onPress: () => router.push({ pathname: '/workout/exercise/[id]', params: { id: ex.exerciseId } }),
@@ -114,7 +144,29 @@ export default function ActiveWorkoutScreen() {
       label: `${sec === ex.restSec ? '✓  ' : ''}${sec ? formatRest(sec) : 'Off'}`,
       onPress: () => setExerciseRest(ex.id, sec),
     }));
+  } else if (menu?.kind === 'set') {
+    const { ex, setId, label } = menu;
+    const current = ex.sets.find((s) => s.id === setId)?.type ?? 'normal';
+    actions = [
+      ...SET_TYPES.map((t) => ({
+        label: `${t.key === current ? '✓  ' : ''}${t.label}`,
+        onPress: () => setSetType(ex.id, setId, t.key),
+      })),
+      {
+        label: `Delete set ${label}`,
+        destructive: true,
+        onPress: () => removeSet(ex.id, setId),
+      },
+    ];
   }
+
+  const menuTitle = !menu
+    ? undefined
+    : menu.kind === 'rest'
+      ? `Rest after each ${menu.ex.name} set`
+      : menu.kind === 'set'
+        ? `${menu.ex.name} · set ${menu.label}`
+        : menu.ex.name;
 
   return (
     <View style={{ flex: 1 }}>
@@ -142,10 +194,6 @@ export default function ActiveWorkoutScreen() {
             placeholderTextColor={colors.muted}
             accessibilityLabel="Workout name"
           />
-          <Text style={styles.muted}>
-            {done} set{done === 1 ? '' : 's'} done · Tick a set to start its rest timer
-            {active.exercises.length > 1 ? '\nHold an exercise name and drag to reorder.' : ''}
-          </Text>
 
           <ReorderableList
             items={active.exercises}
@@ -163,11 +211,14 @@ export default function ActiveWorkoutScreen() {
                 }}
                 lastSets={lastSetsFor(ex.exerciseId)}
                 unit={settings.weightUnit}
+                group={groups[i]}
+                prs={activePRs}
                 onMenu={() => setMenu({ ex, kind: 'main' })}
+                onSetMenu={(setId, label) => setMenu({ ex, kind: 'set', setId, label })}
                 onAddSet={() => addSet(ex.id)}
                 onRemoveSet={(setId) => removeSet(ex.id, setId)}
                 onUpdateSet={(setId, patch) => updateSet(ex.id, setId, patch)}
-                onToggleSet={(setId) => onToggle(ex.id, setId)}
+                onToggleSet={(setId) => onToggle(ex, setId)}
               />
             )}
           />
@@ -188,7 +239,7 @@ export default function ActiveWorkoutScreen() {
 
       <ActionMenu
         visible={menu !== null}
-        title={menu ? (menu.kind === 'rest' ? `Rest after each ${menu.ex.name} set` : menu.ex.name) : undefined}
+        title={menuTitle}
         actions={actions}
         // ActionMenu closes before running the action, so "Rest timer" can reopen it as the rest picker.
         onClose={() => setMenu(null)}

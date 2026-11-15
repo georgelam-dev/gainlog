@@ -13,15 +13,29 @@ import {
 import { RestTicker } from '@/components/workout/RestTicker';
 import { moveItem } from '@/lib/array';
 import { makeId } from '@/lib/date';
-import { allExercises } from '@/lib/exercises';
+import { allExercises, defaultTracking } from '@/lib/exercises';
 import { cancelRestEnd, ensureRestAlerts, scheduleRestEnd } from '@/lib/restAlerts';
 import { storage } from '@/lib/storage';
-import { defaultWorkoutName, e1rm, isLogged, suggestSet } from '@/lib/workout';
+import {
+  continuesGroup,
+  defaultWorkoutName,
+  e1rm,
+  isLogged,
+  linkWithNext,
+  markPRs,
+  normalizeGroups,
+  suggestSet,
+  unlink,
+  type Bests,
+  type PRKind,
+} from '@/lib/workout';
 import type {
   Exercise,
   ExerciseSession,
   RestTimer,
   Routine,
+  SetType,
+  Tracking,
   Workout,
   WorkoutExercise,
   WorkoutSet,
@@ -51,6 +65,12 @@ type WorkoutData = {
   historyFor: (exerciseId: string) => ExerciseSession[];
   /** Completed sets from the last session of this exercise (for "Previous" and pre-fill). */
   lastSetsFor: (exerciseId: string) => WorkoutSet[];
+  /** How this exercise was tracked last time, else its default (reps, or time for cardio/holds). */
+  trackingFor: (exerciseId: string) => Tracking;
+  /** Set id → records it set, for every finished workout (compared with the workouts before it). */
+  historyPRs: Map<string, PRKind[]>;
+  /** Set id → records set so far in the active workout. */
+  activePRs: Map<string, PRKind[]>;
 
   active: Workout | null;
   /** Returns false if a workout is already in progress. */
@@ -66,11 +86,18 @@ type WorkoutData = {
   restFor: (exerciseId: string) => number;
   /** Remember a rest timer for an exercise, e.g. when it's changed in a routine. */
   rememberRest: (exerciseId: string, sec: number) => void;
+  /** Switch an exercise in the active workout between reps and timed sets. */
+  setExerciseTracking: (exId: string, tracking: Tracking) => void;
+  /** Join an exercise with the one below it into a superset. */
+  linkExercise: (exId: string) => void;
+  /** Take an exercise out of its superset. */
+  unlinkExercise: (exId: string) => void;
+  setSetType: (exId: string, setId: string, type: SetType) => void;
   addSet: (exId: string) => void;
   removeSet: (exId: string, setId: string) => void;
   updateSet: (exId: string, setId: string, patch: Partial<Omit<WorkoutSet, 'id'>>) => void;
   /** Tick/untick a set. Empty fields are filled from the suggestion; ticking starts the rest timer. */
-  toggleSetDone: (exId: string, setId: string) => 'done' | 'undone' | 'needs-reps';
+  toggleSetDone: (exId: string, setId: string) => ToggleResult;
   /** Save to history, dropping unfinished sets. Resolves to the saved workout, or null if nothing was done. */
   finishWorkout: () => Promise<Workout | null>;
   discardWorkout: () => void;
@@ -80,6 +107,9 @@ type WorkoutData = {
   adjustRest: (deltaSec: number) => void;
   skipRest: () => void;
 };
+
+/** 'pr' = done and it set a personal record; 'needs-value' = no reps/time entered or suggested. */
+export type ToggleResult = 'done' | 'pr' | 'undone' | 'needs-value';
 
 const WorkoutContext = createContext<WorkoutData | null>(null);
 
@@ -238,10 +268,14 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       for (const ex of w.exercises) {
         const sets = ex.sets.filter(isLogged);
         if (!sets.length) continue;
+        const tracking = ex.tracking ?? 'reps';
         let bestKg: number | undefined;
         let bestE1rm: number | undefined;
+        let bestSec: number | undefined;
         for (const s of sets) {
-          if (s.kg === undefined) continue;
+          if (s.type === 'warmup') continue;
+          if (s.sec !== undefined) bestSec = Math.max(bestSec ?? 0, s.sec);
+          if (s.kg === undefined || tracking === 'time') continue;
           bestKg = Math.max(bestKg ?? 0, s.kg);
           bestE1rm = Math.max(bestE1rm ?? 0, e1rm(s.kg, s.reps ?? 0));
         }
@@ -254,6 +288,8 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
           sets,
           bestKg,
           bestE1rm,
+          bestSec,
+          tracking,
         });
         map.set(ex.exerciseId, list);
       }
@@ -273,6 +309,29 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     lastSetsRef.current = lastSetsFor;
   }, [lastSetsFor]);
+
+  const trackingFor = useCallback(
+    (id: string): Tracking => sessionsByExercise.get(id)?.[0]?.tracking ?? defaultTracking(exerciseMap.get(id)),
+    [sessionsByExercise, exerciseMap]
+  );
+  const trackingRef = useRef(trackingFor);
+  useEffect(() => {
+    trackingRef.current = trackingFor;
+  }, [trackingFor]);
+
+  /** PRs across history (oldest first), plus the all-time bests the active workout is compared with. */
+  const { historyPRs, bests } = useMemo(() => {
+    const running = new Map<string, Bests>();
+    const prs = new Map<string, PRKind[]>();
+    for (let i = workouts.length - 1; i >= 0; i--) {
+      for (const [k, v] of markPRs(workouts[i], running)) prs.set(k, v);
+    }
+    return { historyPRs: prs, bests: running };
+  }, [workouts]);
+  const bestsRef = useRef(bests);
+  useEffect(() => {
+    bestsRef.current = bests;
+  }, [bests]);
 
   // ---- Active workout ---------------------------------------------------
 
@@ -313,6 +372,8 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
           exerciseId: r.exerciseId,
           name: r.name,
           restSec: r.restSec,
+          tracking: r.tracking ?? trackingRef.current(r.exerciseId),
+          groupId: r.groupId,
           sets: emptySets(r.sets),
         })),
       });
@@ -337,6 +398,7 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
             exerciseId: id,
             name: exerciseMap.get(id)?.name ?? 'Exercise',
             restSec: restByExerciseRef.current[id] ?? DEFAULT_REST_SEC,
+            tracking: trackingRef.current(id),
             // Match the number of sets done last time (at least one).
             sets: emptySets(lastSetsRef.current(id).length || 1),
           })),
@@ -347,12 +409,13 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
 
   const removeExercise = useCallback(
     (exId: string) =>
-      mutateActive((w) => ({ ...w, exercises: w.exercises.filter((e) => e.id !== exId) })),
+      mutateActive((w) => ({ ...w, exercises: normalizeGroups(w.exercises.filter((e) => e.id !== exId)) })),
     [mutateActive]
   );
 
   const moveExercise = useCallback(
-    (from: number, to: number) => mutateActive((w) => ({ ...w, exercises: moveItem(w.exercises, from, to) })),
+    (from: number, to: number) =>
+      mutateActive((w) => ({ ...w, exercises: normalizeGroups(moveItem(w.exercises, from, to)) })),
     [mutateActive]
   );
 
@@ -378,6 +441,39 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     [mutateExercise, rememberRest]
   );
 
+  const setExerciseTracking = useCallback(
+    (exId: string, tracking: Tracking) =>
+      mutateExercise(exId, (e) => ({
+        ...e,
+        tracking,
+        // A ticked set with nothing to show in the new mode goes back to unticked.
+        sets: e.sets.map((s) =>
+          s.done && !((tracking === 'time' ? s.sec : s.reps) ?? 0) ? { ...s, done: false } : s
+        ),
+      })),
+    [mutateExercise]
+  );
+
+  const groupEdit = useCallback(
+    (exId: string, fn: (list: WorkoutExercise[], i: number) => WorkoutExercise[]) =>
+      mutateActive((w) => {
+        const i = w.exercises.findIndex((e) => e.id === exId);
+        return i < 0 ? w : { ...w, exercises: fn(w.exercises, i) };
+      }),
+    [mutateActive]
+  );
+  const linkExercise = useCallback((exId: string) => groupEdit(exId, linkWithNext), [groupEdit]);
+  const unlinkExercise = useCallback((exId: string) => groupEdit(exId, unlink), [groupEdit]);
+
+  const setSetType = useCallback(
+    (exId: string, setId: string, type: SetType) =>
+      mutateExercise(exId, (e) => ({
+        ...e,
+        sets: e.sets.map((s) => (s.id === setId ? { ...s, type: type === 'normal' ? undefined : type } : s)),
+      })),
+    [mutateExercise]
+  );
+
   const addSet = useCallback(
     (exId: string) =>
       mutateExercise(exId, (e) => ({ ...e, sets: [...e.sets, { id: makeId(), done: false }] })),
@@ -400,8 +496,10 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
   );
 
   const toggleSetDone = useCallback(
-    (exId: string, setId: string): 'done' | 'undone' | 'needs-reps' => {
-      const ex = activeRef.current?.exercises.find((e) => e.id === exId);
+    (exId: string, setId: string): ToggleResult => {
+      const list = activeRef.current?.exercises ?? [];
+      const exIndex = list.findIndex((e) => e.id === exId);
+      const ex = list[exIndex];
       const index = ex?.sets.findIndex((s) => s.id === setId) ?? -1;
       if (!ex || index < 0) return 'undone';
       const set = ex.sets[index];
@@ -410,12 +508,20 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
         return 'undone';
       }
       const hint = suggestSet(ex.sets, index, lastSetsRef.current(ex.exerciseId));
-      const reps = set.reps ?? hint?.reps;
-      if (!reps) return 'needs-reps';
       const kg = set.kg ?? hint?.kg;
-      updateSet(exId, setId, { done: true, reps, kg });
-      startRest(ex.restSec);
-      return 'done';
+      if ((ex.tracking ?? 'reps') === 'time') {
+        const sec = set.sec ?? hint?.sec;
+        if (!sec) return 'needs-value';
+        updateSet(exId, setId, { done: true, sec, kg });
+      } else {
+        const reps = set.reps ?? hint?.reps;
+        if (!reps) return 'needs-value';
+        updateSet(exId, setId, { done: true, reps, kg });
+      }
+      // In a superset, rest only after the last exercise of the round.
+      if (!continuesGroup(list, exIndex)) startRest(ex.restSec);
+      const after = activeRef.current;
+      return after && markPRs(after, new Map(bestsRef.current)).has(setId) ? 'pr' : 'done';
     },
     [updateSet, startRest]
   );
@@ -442,6 +548,11 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
     setRestTimer(null);
   }, [commitActive, setRestTimer]);
 
+  const activePRs = useMemo(
+    () => (active ? markPRs(active, new Map(bests)) : new Map<string, PRKind[]>()),
+    [active, bests]
+  );
+
   const reload = useCallback(async () => {
     setRoutineDraft(null);
     setRestTimer(null);
@@ -465,6 +576,9 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       deleteWorkout,
       historyFor,
       lastSetsFor,
+      trackingFor,
+      historyPRs,
+      activePRs,
       active,
       startWorkout,
       renameActive,
@@ -474,6 +588,10 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       setExerciseRest,
       restFor,
       rememberRest,
+      setExerciseTracking,
+      linkExercise,
+      unlinkExercise,
+      setSetType,
       addSet,
       removeSet,
       updateSet,
@@ -500,6 +618,9 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       deleteWorkout,
       historyFor,
       lastSetsFor,
+      trackingFor,
+      historyPRs,
+      activePRs,
       active,
       startWorkout,
       renameActive,
@@ -509,6 +630,10 @@ export function WorkoutProvider({ children }: { children: ReactNode }) {
       setExerciseRest,
       restFor,
       rememberRest,
+      setExerciseTracking,
+      linkExercise,
+      unlinkExercise,
+      setSetType,
       addSet,
       removeSet,
       updateSet,

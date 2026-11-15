@@ -12,6 +12,7 @@ import {
   percentToGrams,
 } from '@/lib/nutrition';
 import type { MacroMode, Settings } from '@/lib/types';
+import { mlToUnit, unitToMl, waterUnitFor } from '@/lib/water';
 import { Text, TextInput } from '@/components/ui/Text';
 
 type Draft = { calories: string; carbs: string; protein: string; fat: string };
@@ -212,9 +213,57 @@ function SettingsForm({ settings }: { settings: Settings }) {
           </View>
         </View>
 
+        <WaterGoalCard />
+
         <BackupCard />
       </ScrollView>
     </KeyboardAvoidingView>
+  );
+}
+
+/** Saves when the field loses focus; shown in fl oz for lb users, stored in ml. */
+function WaterGoalCard() {
+  const { settings, saveSettings } = useAppData();
+  const unit = waterUnitFor(settings.weightUnit);
+  const shown = String(Math.round(mlToUnit(settings.waterGoalMl, unit)));
+  const [text, setText] = useState(shown);
+  const [prevShown, setPrevShown] = useState(shown);
+  // Re-sync when the stored goal or the unit changes elsewhere.
+  if (shown !== prevShown) {
+    setPrevShown(shown);
+    setText(shown);
+  }
+
+  const commit = () => {
+    const v = parse(text);
+    if (!Number.isFinite(v) || v <= 0) {
+      setText(shown);
+      return;
+    }
+    const ml = Math.round(unitToMl(v, unit));
+    if (ml !== settings.waterGoalMl) saveSettings({ ...settings, waterGoalMl: ml });
+  };
+
+  return (
+    <View style={styles.card}>
+      <View style={{ gap: 2 }}>
+        <Text style={styles.sectionTitle}>Water</Text>
+        <Text style={styles.note}>Daily goal for the water tracker on the home screen.</Text>
+      </View>
+      <View style={styles.inputRow}>
+        <TextInput
+          value={text}
+          onChangeText={setText}
+          onEndEditing={commit}
+          onSubmitEditing={commit}
+          keyboardType="number-pad"
+          returnKeyType="done"
+          style={styles.input}
+          accessibilityLabel={`Daily water goal in ${unit === 'oz' ? 'fluid ounces' : 'millilitres'}`}
+        />
+        <Text style={styles.unit}>{unit === 'oz' ? 'fl oz' : 'ml'}</Text>
+      </View>
+    </View>
   );
 }
 

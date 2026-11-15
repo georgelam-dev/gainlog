@@ -8,13 +8,25 @@ export type Exercise = {
   equipment?: string;
   category?: string;
   custom?: true;
+  /** How sets are logged; defaults by category/name when absent (see defaultTracking). */
+  tracking?: Tracking;
 };
+
+/** Reps-based sets (weight × reps) or timed sets (weight × duration, e.g. plank, cardio). */
+export type Tracking = 'reps' | 'time';
+
+/** Warm-ups don't count toward PRs; drop and failure sets are tags. */
+export type SetType = 'normal' | 'warmup' | 'drop' | 'failure';
 
 export type WorkoutSet = {
   id: string;
   /** Always stored in kg; undefined for bodyweight sets */
   kg?: number;
   reps?: number;
+  /** Duration in seconds, for timed exercises */
+  sec?: number;
+  /** Absent = normal */
+  type?: SetType;
   done: boolean;
 };
 
@@ -25,6 +37,10 @@ export type WorkoutExercise = {
   name: string;
   /** Rest after each completed set, in seconds. 0 = no rest timer. */
   restSec: number;
+  /** Absent = 'reps' */
+  tracking?: Tracking;
+  /** Adjacent exercises sharing a groupId form a superset (2) or circuit (3+). */
+  groupId?: string;
   sets: WorkoutSet[];
 };
 
@@ -45,6 +61,8 @@ export type RoutineExercise = {
   sets: number;
   /** 0 = no rest timer */
   restSec: number;
+  tracking?: Tracking;
+  groupId?: string;
 };
 
 /** A saved template used to start a workout with exercises pre-filled. */
@@ -66,6 +84,9 @@ export type ExerciseSession = {
   bestKg?: number;
   /** Best estimated one-rep max (Epley), in kg */
   bestE1rm?: number;
+  /** Longest timed set, in seconds */
+  bestSec?: number;
+  tracking: Tracking;
 };
 
 /** Running rest timer. */

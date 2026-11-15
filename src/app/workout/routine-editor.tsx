@@ -11,6 +11,7 @@ import { useWorkout } from '@/context/WorkoutProvider';
 import type { RoutineExercise } from '@/lib/workoutTypes';
 import { Text, TextInput } from '@/components/ui/Text';
 import { moveItem } from '@/lib/array';
+import { continuesGroup, groupInfo, groupName, linkWithNext, normalizeGroups, splitAfter } from '@/lib/workout';
 
 const MAX_SETS = 20;
 
@@ -37,8 +38,21 @@ export default function RoutineEditorScreen() {
   const move = (from: number, to: number) =>
     setRoutineDraft((d) => {
       if (!d || to < 0 || to >= d.exercises.length) return d;
-      return { ...d, exercises: moveItem(d.exercises, from, to) };
+      return { ...d, exercises: normalizeGroups(moveItem(d.exercises, from, to)) };
     });
+
+  const toggleLink = (i: number) =>
+    setRoutineDraft((d) =>
+      d
+        ? {
+            ...d,
+            exercises: continuesGroup(d.exercises, i)
+              ? splitAfter(d.exercises, i)
+              : linkWithNext(d.exercises, i),
+          }
+        : d
+    );
+  const groups = groupInfo(draft.exercises);
 
   // Routine entries have no id; key by exercise plus occurrence so a card keeps its identity when moved.
   const seen = new Map<string, number>();
@@ -49,7 +63,9 @@ export default function RoutineEditorScreen() {
   });
 
   const remove = (i: number) =>
-    setRoutineDraft((d) => (d ? { ...d, exercises: d.exercises.filter((_, j) => j !== i) } : d));
+    setRoutineDraft((d) =>
+      d ? { ...d, exercises: normalizeGroups(d.exercises.filter((_, j) => j !== i)) } : d
+    );
 
   const save = () => {
     if (!valid) {
@@ -97,8 +113,18 @@ export default function RoutineEditorScreen() {
           onReorder={move}
           onDraggingChange={setDragging}
           dragAreaHeight={50}
-          renderItem={(e, i) => (
-            <View style={styles.card}>
+          renderItem={(e, i) => {
+            const group = groups[i];
+            const groupColor = group ? colors.groups[group.colorIndex % colors.groups.length] : undefined;
+            const linked = continuesGroup(draft.exercises, i);
+            return (
+            <View style={[styles.card, groupColor && { borderLeftWidth: 4, borderLeftColor: groupColor }]}>
+              {group && (
+                <Text style={[styles.groupTag, { color: groupColor }]}>
+                  {groupName(group.size)} {group.letter}
+                  {group.position + 1}
+                </Text>
+              )}
               <View style={styles.rowBetween}>
                 <Text
                   style={styles.exName}
@@ -138,8 +164,24 @@ export default function RoutineEditorScreen() {
                   rememberRest(e.exerciseId, restSec);
                 }}
               />
+              {linked && <Text style={styles.muted}>Rest starts after the last exercise in the round.</Text>}
+              {i < draft.exercises.length - 1 && (
+                <Pressable
+                  onPress={() => toggleLink(i)}
+                  style={styles.linkBtn}
+                  accessibilityLabel={
+                    linked
+                      ? `Unlink ${e.name} from ${draft.exercises[i + 1].name}`
+                      : `Superset ${e.name} with ${draft.exercises[i + 1].name}`
+                  }>
+                  <Text style={[styles.linkText, linked && { color: colors.muted }]}>
+                    {linked ? '✕ Unlink from next' : '🔗 Superset with next'}
+                  </Text>
+                </Pressable>
+              )}
             </View>
-          )}
+            );
+          }}
         />
 
         <Pressable
@@ -187,6 +229,9 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   exName: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.primary },
   label: { fontSize: 13, fontWeight: '600', color: colors.text },
+  groupTag: { fontSize: 12, fontWeight: '800' },
+  linkBtn: { alignSelf: 'flex-start', paddingVertical: 2 },
+  linkText: { color: colors.primary, fontWeight: '700', fontSize: 13 },
   iconBtn: {
     width: 32,
     height: 32,

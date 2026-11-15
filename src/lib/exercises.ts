@@ -1,6 +1,15 @@
 import data from '@/data/exercises.json';
 
-import type { Exercise } from './workoutTypes';
+import type { Exercise, Tracking } from './workoutTypes';
+
+const TIMED_NAME = /^plank|side plank|wall sit|\bhold\b|dead hang|isometric (?!wipers)|\bcarry\b|farmer/i;
+
+/** Cardio, planks, holds and carries are timed; everything else counts reps. */
+export function defaultTracking(e: Exercise | undefined): Tracking {
+  if (!e) return 'reps';
+  if (e.tracking) return e.tracking;
+  return e.category === 'cardio' || TIMED_NAME.test(e.name) ? 'time' : 'reps';
+}
 
 /** ~750 exercises from free-exercise-db (public domain), stretches removed. */
 export const BUILT_IN_EXERCISES = data as Exercise[];
