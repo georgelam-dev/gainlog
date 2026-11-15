@@ -1,8 +1,9 @@
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { Pressable, ScrollView, StyleSheet } from 'react-native';
 
 import { colors } from '@/constants/theme';
 import { formatRest } from '@/lib/workout';
 import { REST_PRESETS } from '@/lib/workoutTypes';
+import { Text } from '@/components/ui/Text';
 
 /** Horizontal row of preset rest times (Off, 30s … 5m). */
 export function RestChips({ value, onChange }: { value: number; onChange: (sec: number) => void }) {

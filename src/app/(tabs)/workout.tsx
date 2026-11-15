@@ -1,14 +1,15 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ActionMenu } from '@/components/ActionMenu';
 import { Elapsed } from '@/components/workout/Elapsed';
-import { colors, radius, spacing } from '@/constants/theme';
+import { colors, radius, spacing, fonts } from '@/constants/theme';
 import { useWorkout } from '@/context/WorkoutProvider';
 import { makeId } from '@/lib/date';
 import { countDoneSets } from '@/lib/workout';
 import type { Routine } from '@/lib/workoutTypes';
+import { Text } from '@/components/ui/Text';
 
 export default function WorkoutScreen() {
   const { active, startWorkout, routines, deleteRoutine, setRoutineDraft, workouts } = useWorkout();
@@ -160,9 +161,9 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   activeLabel: { color: colors.primaryText, opacity: 0.85, fontSize: 12, fontWeight: '700' },
-  activeName: { color: colors.primaryText, fontSize: 18, fontWeight: '800' },
+  activeName: { fontFamily: fonts.display, color: colors.primaryText, fontSize: 22, fontWeight: '800' },
   activeMeta: { color: colors.primaryText, opacity: 0.85, fontSize: 13 },
-  activeTime: { color: colors.primaryText, fontSize: 22, fontWeight: '800' },
+  activeTime: { fontFamily: fonts.display, color: colors.primaryText, fontSize: 30, fontWeight: '800' },
   routine: {
     flexDirection: 'row',
     alignItems: 'center',

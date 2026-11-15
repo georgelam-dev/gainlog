@@ -1,6 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import type { NutriScore } from '@/lib/types';
+import { Text } from '@/components/ui/Text';
 
 /** Official Nutri-Score colours, A (dark green) to E (red). */
 export const NUTRISCORE_COLORS: Record<NutriScore, { bg: string; fg: string }> = {

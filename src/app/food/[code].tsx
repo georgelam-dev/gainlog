@@ -1,21 +1,13 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  Linking,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { NutriScoreScale } from '@/components/NutriScoreBadge';
-import { colors, radius, spacing } from '@/constants/theme';
+import { colors, radius, spacing, fonts } from '@/constants/theme';
 import { fmt, fmt1 } from '@/lib/nutrition';
 import { fetchFoodDetails, offProductUrl } from '@/lib/openFoodFacts';
 import type { Food, FoodDetails, NutriScore } from '@/lib/types';
+import { Text } from '@/components/ui/Text';
 
 type State =
   | { status: 'loading' }
@@ -38,7 +30,7 @@ const NOVA: Record<number, { label: string; color: string }> = {
   4: { label: 'Ultra-processed food', color: '#E63E11' },
 };
 
-const LEVEL_COLOR = { low: colors.carbs, moderate: colors.fat, high: colors.danger } as const;
+const LEVEL_COLOR = { low: colors.good, moderate: colors.caution, high: colors.danger } as const;
 const LEVEL_LABEL = { fat: 'Fat', 'saturated-fat': 'Saturated fat', sugars: 'Sugars', salt: 'Salt' } as const;
 
 export default function FoodDetailScreen() {
@@ -228,7 +220,7 @@ function Diet({ label, value, invert }: { label: string; value?: boolean; invert
   // For palm oil, "true" (contains it) is the bad case.
   const good = value === undefined ? undefined : invert ? !value : value;
   const mark = value === undefined ? '?' : value ? '✓' : '✕';
-  const color = good === undefined ? colors.muted : good ? colors.carbs : colors.danger;
+  const color = good === undefined ? colors.muted : good ? colors.good : colors.danger;
   return (
     <View style={styles.diet}>
       <Text style={[styles.dietMark, { color }]}>{mark}</Text>
@@ -278,7 +270,7 @@ const styles = StyleSheet.create({
   content: { padding: spacing, gap: 12, paddingBottom: spacing * 3 },
   header: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
   photo: { width: 96, height: 120, borderRadius: radius / 2, backgroundColor: '#FFFFFF' },
-  title: { fontSize: 22, fontWeight: '800', color: colors.text },
+  title: { fontFamily: fonts.display, fontSize: 30, fontWeight: '800', color: colors.text },
   muted: { fontSize: 13, color: colors.muted },
   body: { fontSize: 14, color: colors.text, lineHeight: 20 },
   bold: { fontWeight: '700' },
@@ -292,7 +284,7 @@ const styles = StyleSheet.create({
   novaText: { color: '#FFFFFF', fontSize: 20, fontWeight: '900' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: colors.cardAlt },
-  allergenChip: { backgroundColor: 'rgba(255, 92, 92, 0.15)' },
+  allergenChip: { backgroundColor: 'rgba(255, 106, 85, 0.15)' },
   chipText: { fontSize: 13, color: colors.text, fontWeight: '600' },
   levelChip: {
     flexDirection: 'row',

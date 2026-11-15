@@ -1,10 +1,11 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { colors } from '@/constants/theme';
 import { fmt, fmt1 } from '@/lib/nutrition';
 import type { Food } from '@/lib/types';
 
 import { NutriScoreBadge } from './NutriScoreBadge';
+import { Text } from '@/components/ui/Text';
 
 type Props = {
   food: Food;

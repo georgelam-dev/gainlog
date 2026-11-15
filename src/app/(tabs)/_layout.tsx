@@ -1,8 +1,9 @@
 import { Tabs } from 'expo-router';
-import { Text, type ColorValue } from 'react-native';
+import { type ColorValue } from 'react-native';
 import Svg, { Rect } from 'react-native-svg';
 
-import { colors } from '@/constants/theme';
+import { colors, fonts } from '@/constants/theme';
+import { Text } from '@/components/ui/Text';
 
 function TabIcon({ glyph, color }: { glyph: string; color: ColorValue }) {
   return <Text style={{ fontSize: 20, color }}>{glyph}</Text>;
@@ -28,11 +29,12 @@ export default function TabsLayout() {
       screenOptions={{
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.muted,
-        tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.border },
+        tabBarStyle: { backgroundColor: colors.bg, borderTopColor: colors.border },
+        tabBarLabelStyle: { fontFamily: fonts.body, fontWeight: '600', fontSize: 11 },
         headerStyle: { backgroundColor: colors.bg },
         headerTintColor: colors.text,
         headerShadowVisible: false,
-        headerTitleStyle: { fontWeight: '800', fontSize: 22 },
+        headerTitleStyle: { fontFamily: fonts.display, fontWeight: '800', fontSize: 26 },
         sceneStyle: { backgroundColor: colors.bg },
       }}>
       <Tabs.Screen

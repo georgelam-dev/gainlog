@@ -1,18 +1,10 @@
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { colors, radius, spacing } from '@/constants/theme';
+import { colors, radius, spacing, fonts } from '@/constants/theme';
 import { capitalize, EQUIPMENT, MUSCLES } from '@/lib/exercises';
 import type { Exercise } from '@/lib/workoutTypes';
+import { Text, TextInput } from '@/components/ui/Text';
 
 type Props = {
   visible: boolean;
@@ -100,7 +92,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing * 2,
     gap: 12,
   },
-  title: { fontSize: 18, fontWeight: '700', color: colors.text },
+  title: { fontFamily: fonts.display, fontSize: 24, fontWeight: '800', color: colors.text },
   label: { fontSize: 13, fontWeight: '600', color: colors.text },
   muted: { fontSize: 13, color: colors.muted },
   input: {

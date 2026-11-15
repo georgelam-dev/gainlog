@@ -1,14 +1,6 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { BarcodeScanner } from '@/components/BarcodeScanner';
 import { FoodRow } from '@/components/FoodRow';
@@ -21,6 +13,7 @@ import { makeId, todayKey } from '@/lib/date';
 import { fetchFoodByBarcode, searchFoods } from '@/lib/openFoodFacts';
 import { isMealType, MEALS, type EntryUnit, type Food, type SavedMeal } from '@/lib/types';
 import { describeAmount } from '@/lib/units';
+import { Text, TextInput } from '@/components/ui/Text';
 
 type Tab = 'search' | 'favorites' | 'meals';
 
@@ -354,10 +347,8 @@ const styles = StyleSheet.create({
   headerBtn: { color: colors.primary, fontWeight: '700', fontSize: 15 },
   listHeader: {
     color: colors.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontSize: 13,
+    fontWeight: '600',
     marginHorizontal: spacing,
     marginTop: 4,
     marginBottom: 6,

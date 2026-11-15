@@ -1,7 +1,8 @@
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { colors, radius, spacing } from '@/constants/theme';
+import { Text } from '@/components/ui/Text';
 
 export type MenuAction = { label: string; onPress: () => void; destructive?: boolean };
 

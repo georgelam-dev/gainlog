@@ -1,10 +1,11 @@
 import { router, Stack } from 'expo-router';
-import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { RestChips } from '@/components/workout/RestChips';
-import { colors, radius, spacing } from '@/constants/theme';
+import { colors, radius, spacing, fonts } from '@/constants/theme';
 import { useWorkout } from '@/context/WorkoutProvider';
 import type { RoutineExercise } from '@/lib/workoutTypes';
+import { Text, TextInput } from '@/components/ui/Text';
 
 const MAX_SETS = 20;
 
@@ -158,7 +159,7 @@ const styles = StyleSheet.create({
   content: { padding: spacing, gap: 12, paddingBottom: spacing * 3 },
   muted: { fontSize: 13, color: colors.muted },
   headerBtn: { color: colors.primary, fontWeight: '700', fontSize: 16 },
-  nameInput: { fontSize: 24, fontWeight: '800', color: colors.text, paddingVertical: 4 },
+  nameInput: { fontFamily: fonts.display, fontSize: 32, fontWeight: '800', color: colors.text, paddingVertical: 4 },
   card: { backgroundColor: colors.card, borderRadius: radius, padding: 14, gap: 10 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   exName: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.primary },
@@ -174,7 +175,7 @@ const styles = StyleSheet.create({
   },
   iconText: { color: colors.text, fontSize: 16, fontWeight: '700' },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  stepValue: { fontSize: 18, fontWeight: '800', color: colors.text, minWidth: 24, textAlign: 'center' },
+  stepValue: { fontFamily: fonts.display, fontSize: 24, fontWeight: '800', color: colors.text, minWidth: 24, textAlign: 'center' },
   addBtn: { backgroundColor: colors.primary, borderRadius: radius, paddingVertical: 14, alignItems: 'center' },
   addText: { color: colors.primaryText, fontWeight: '700', fontSize: 16 },
 });

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ActionMenu, type MenuAction } from '@/components/ActionMenu';
 import { MealBreakdown } from '@/components/MealBreakdown';
-import { colors, radius, spacing } from '@/constants/theme';
+import { colors, radius, spacing, fonts } from '@/constants/theme';
 import { fmt, fmt1, scale, sumEntries } from '@/lib/nutrition';
 import type { LogEntry } from '@/lib/types';
+import { Text } from '@/components/ui/Text';
 
 /** "2 × large egg · 100 g · Brand", or "Quick add" for hand-entered macros. */
 function entryMeta(e: LogEntry): string {
@@ -115,7 +116,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: colors.card, borderRadius: radius, padding: spacing },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   headerText: { flex: 1 },
-  title: { fontSize: 17, fontWeight: '700', color: colors.text },
+  title: { fontFamily: fonts.display, fontSize: 22, fontWeight: '800', color: colors.text },
   chevron: { fontSize: 13, color: colors.muted, fontWeight: '400' },
   subtitle: { fontSize: 13, color: colors.muted, marginTop: 2 },
   addBtn: {

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Text, type TextStyle } from 'react-native';
+import { type TextStyle } from 'react-native';
 
 import { formatDuration } from '@/lib/workout';
+import { Text } from '@/components/ui/Text';
 
 /** Live "12:34" since `since` (epoch ms). */
 export function Elapsed({ since, style }: { since: number; style?: TextStyle }) {

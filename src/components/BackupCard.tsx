@@ -2,13 +2,14 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, View } from 'react-native';
 
 import { colors, radius } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
 import { useWorkout } from '@/context/WorkoutProvider';
 import { todayKey } from '@/lib/date';
 import { exportAll, importAll, parseBackup, type Backup } from '@/lib/storage';
+import { Text } from '@/components/ui/Text';
 
 /** Export everything to a JSON file via the share sheet, or restore from one. */
 export function BackupCard() {

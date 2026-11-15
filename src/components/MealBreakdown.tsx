@@ -1,8 +1,9 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { colors } from '@/constants/theme';
 import { fmt1, KCAL_PER_GRAM } from '@/lib/nutrition';
 import type { Macros } from '@/lib/types';
+import { Text } from '@/components/ui/Text';
 
 const MACROS = [
   { key: 'carbs', label: 'Carbs', color: colors.carbs },

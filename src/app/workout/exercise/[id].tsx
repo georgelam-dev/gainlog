@@ -1,15 +1,16 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { TrendChart } from '@/components/TrendChart';
-import { colors, radius, spacing } from '@/constants/theme';
+import { colors, radius, spacing, fonts } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
 import { useWorkout } from '@/context/WorkoutProvider';
 import { toDateKey } from '@/lib/date';
 import { capitalize } from '@/lib/exercises';
 import { fmtLoad, toUnit } from '@/lib/weightUnits';
 import { workoutDateLabel } from '@/lib/workout';
+import { Text } from '@/components/ui/Text';
 
 type Metric = 'e1rm' | 'weight';
 
@@ -151,14 +152,14 @@ function Stat({ label, value, unit }: { label: string; value: string; unit: stri
 
 const styles = StyleSheet.create({
   content: { padding: spacing, gap: 12, paddingBottom: spacing * 3 },
-  title: { fontSize: 24, fontWeight: '800', color: colors.text },
+  title: { fontFamily: fonts.display, fontSize: 32, fontWeight: '800', color: colors.text },
   muted: { fontSize: 13, color: colors.muted },
   card: { backgroundColor: colors.card, borderRadius: radius, padding: spacing, gap: 10 },
   cardTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
   statsRow: { flexDirection: 'row', gap: 10 },
   stat: { flex: 1, backgroundColor: colors.card, borderRadius: radius, padding: 12, alignItems: 'center', gap: 2 },
-  statValue: { fontSize: 18, fontWeight: '800', color: colors.text, fontVariant: ['tabular-nums'] },
+  statValue: { fontFamily: fonts.display, fontSize: 26, fontWeight: '800', color: colors.text, fontVariant: ['tabular-nums'] },
   statUnit: { fontSize: 12, fontWeight: '500', color: colors.muted },
   toggle: { flexDirection: 'row', backgroundColor: colors.track, borderRadius: 999, padding: 3 },
   toggleBtn: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },

@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Line, Polyline } from 'react-native-svg';
 
 import { colors } from '@/constants/theme';
 import { formatDateLabel, fromDateKey } from '@/lib/date';
+import { Text } from '@/components/ui/Text';
 
 export type TrendPoint = {
   /** YYYY-MM-DD */

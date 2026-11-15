@@ -1,6 +1,6 @@
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { QuantitySheet } from '@/components/QuantitySheet';
 import { colors, radius, spacing } from '@/constants/theme';
@@ -8,6 +8,7 @@ import { useAppData } from '@/context/AppDataProvider';
 import { fmt, scale, sumEntries } from '@/lib/nutrition';
 import type { MealItem } from '@/lib/types';
 import { describeAmount } from '@/lib/units';
+import { Text, TextInput } from '@/components/ui/Text';
 
 export default function MealEditorScreen() {
   const { mealDraft: draft, setMealDraft, savedMeals, saveMeal, deleteMeal } = useAppData();

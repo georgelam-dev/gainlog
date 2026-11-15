@@ -1,23 +1,16 @@
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import { router } from 'expo-router';
 
 import { NutriScoreBadge } from '@/components/NutriScoreBadge';
-import { colors, radius, spacing } from '@/constants/theme';
+import { colors, radius, spacing, fonts } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
 import { fmt, fmt1, scale } from '@/lib/nutrition';
 import { isOffProduct } from '@/lib/openFoodFacts';
 import type { EntryUnit, Food, FoodUnit } from '@/lib/types';
 import { unitsFor } from '@/lib/units';
+import { Text, TextInput } from '@/components/ui/Text';
 
 type Props = {
   visible: boolean;
@@ -287,7 +280,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing * 2,
     gap: 12,
   },
-  name: { fontSize: 18, fontWeight: '700', color: colors.text },
+  name: { fontFamily: fonts.display, fontSize: 24, fontWeight: '800', color: colors.text },
   muted: { fontSize: 13, color: colors.muted },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   detailsBtn: {

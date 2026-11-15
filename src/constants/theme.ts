@@ -1,21 +1,60 @@
-/** Dark theme — near-black surfaces, azure accent, vivid macro colours. */
+import { Platform } from 'react-native';
+
+/**
+ * Chalk on steel: cool slate surfaces, chalk-white type, a soft blue for
+ * anything you can act on, and macro colours borrowed from calibrated plates.
+ */
 export const colors = {
-  bg: '#0E0F13',
-  card: '#191B22',
-  cardAlt: '#22252E',
-  text: '#F3F4F6',
-  muted: '#8B90A0',
-  border: '#2A2D37',
-  primary: '#2E9BFF',
-  primaryText: '#FFFFFF',
-  danger: '#FF5C5C',
-  star: '#FFC93C',
-  carbs: '#34D399',
-  protein: '#FF6B81',
-  fat: '#FFB547',
-  track: '#2A2D37',
-  overlay: 'rgba(0,0,0,0.6)',
+  /** brushed steel */
+  bg: '#15181D',
+  /** sections, sheets */
+  card: '#1E232A',
+  /** inputs, secondary buttons */
+  cardAlt: '#282E37',
+  /** chalk */
+  text: '#E9EDF3',
+  /** chalk dust */
+  muted: '#8E97A5',
+  border: '#333A45',
+  /** soft blue — actions, links, progress */
+  primary: '#6AA5FF',
+  primaryText: '#0C1626',
+  danger: '#FF6A55',
+  star: '#F2C230',
+  /** 15 kg plate yellow */
+  carbs: '#F2C230',
+  /** 25 kg plate red */
+  protein: '#E0433F',
+  /** 10 kg plate green */
+  fat: '#3FA65A',
+  /** a completed set */
+  done: '#3FA65A',
+  doneWash: 'rgba(63, 166, 90, 0.14)',
+  /** traffic-light states (food levels, calories vs goal) — not macro colours */
+  good: '#3FA65A',
+  caution: '#F0943A',
+  track: '#2D333D',
+  overlay: 'rgba(7, 9, 13, 0.66)',
 };
 
-export const radius = 20;
+/** Section radius. Inputs and checks are cut tighter (radii.steel); chips are pills. */
+export const radius = 12;
+export const radii = { steel: 4, section: radius, sheet: 18, pill: 999 };
 export const spacing = 16;
+
+/**
+ * System font families — nothing to load. `fontWeight` picks the face.
+ * Body is applied by default through `@/components/ui/Text`; use display for
+ * numbers and titles at 20px and up.
+ */
+const systemSans = Platform.select({
+  ios: 'Helvetica Neue',
+  // Helvetica Neue isn't on Android and can't be bundled without a licence; Roboto is the closest system face.
+  android: 'sans-serif',
+  default: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+});
+
+export const fonts = {
+  body: systemSans,
+  display: systemSans,
+};

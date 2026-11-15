@@ -1,6 +1,6 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CustomExerciseSheet } from '@/components/workout/CustomExerciseSheet';
@@ -8,6 +8,7 @@ import { colors, radius, spacing } from '@/constants/theme';
 import { useWorkout } from '@/context/WorkoutProvider';
 import { capitalize, MUSCLES, searchExercises } from '@/lib/exercises';
 import type { Exercise } from '@/lib/workoutTypes';
+import { Text, TextInput } from '@/components/ui/Text';
 
 type Target = 'active' | 'routine' | 'browse';
 

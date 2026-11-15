@@ -1,12 +1,13 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
-import { colors, radius, spacing } from '@/constants/theme';
+import { colors, radius, spacing, fonts } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
 import { useWorkout } from '@/context/WorkoutProvider';
 import { makeId } from '@/lib/date';
 import { fmtLoad, toUnit } from '@/lib/weightUnits';
 import { countDoneSets, e1rm, formatDurationShort, volumeKg, workoutDateLabel } from '@/lib/workout';
+import { Text } from '@/components/ui/Text';
 
 export default function WorkoutDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -120,11 +121,11 @@ function Stat({ label, value }: { label: string; value: string }) {
 const styles = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: spacing, gap: 12, paddingBottom: spacing * 3 },
-  title: { fontSize: 24, fontWeight: '800', color: colors.text },
+  title: { fontFamily: fonts.display, fontSize: 32, fontWeight: '800', color: colors.text },
   muted: { fontSize: 13, color: colors.muted },
   statsRow: { flexDirection: 'row', gap: 10 },
   stat: { flex: 1, backgroundColor: colors.card, borderRadius: radius, padding: 12, alignItems: 'center', gap: 2 },
-  statValue: { fontSize: 18, fontWeight: '800', color: colors.text, fontVariant: ['tabular-nums'] },
+  statValue: { fontFamily: fonts.display, fontSize: 26, fontWeight: '800', color: colors.text, fontVariant: ['tabular-nums'] },
   card: { backgroundColor: colors.card, borderRadius: radius, padding: 14, gap: 6 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   exName: { flex: 1, fontSize: 16, fontWeight: '700', color: colors.primary },

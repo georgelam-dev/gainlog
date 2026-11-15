@@ -51,10 +51,11 @@
       [
         "expo-notifications",
         {
-          "color": "#2E9BFF"
+          "color": "#F2C230"
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-font"
     ],
     "extra": {
       "router": {

@@ -1,13 +1,14 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Line, Rect } from 'react-native-svg';
 
-import { colors, radius, spacing } from '@/constants/theme';
+import { colors, radius, spacing, fonts } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
 import { fromDateKey, shiftDateKey, todayKey } from '@/lib/date';
 import { fmt, sumEntries } from '@/lib/nutrition';
 import { storage } from '@/lib/storage';
+import { Text } from '@/components/ui/Text';
 
 const CHART_H = 150;
 const TOP_PAD = 18; // room for the value labels above bars
@@ -81,7 +82,7 @@ export function WeekCalories() {
           <Text
             style={[
               styles.statValue,
-              logged.length > 0 && { color: avg > goal ? colors.fat : colors.carbs },
+              logged.length > 0 && { color: avg > goal ? colors.caution : colors.good },
             ]}>
             {logged.length ? `${avg > goal ? '+' : '−'}${fmt(Math.abs(avg - goal))}` : '—'}
           </Text>
@@ -103,7 +104,7 @@ export function WeekCalories() {
                   width={barW}
                   height={h}
                   rx={6}
-                  fill={over ? colors.fat : colors.primary}
+                  fill={over ? colors.caution : colors.primary}
                   opacity={d.date === today ? 1 : 0.7}
                 />
               );
@@ -151,7 +152,6 @@ export function WeekCalories() {
           </Pressable>
         ))}
       </View>
-      <Text style={styles.muted}>Dashed line is your daily goal. Tap a day to open its log.</Text>
     </View>
   );
 }
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 17, fontWeight: '700', color: colors.text },
   muted: { fontSize: 13, color: colors.muted },
   statsRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  statValue: { fontSize: 20, fontWeight: '800', color: colors.text, fontVariant: ['tabular-nums'] },
+  statValue: { fontFamily: fonts.display, fontSize: 28, fontWeight: '800', color: colors.text, fontVariant: ['tabular-nums'] },
   barLabel: {
     position: 'absolute',
     textAlign: 'center',

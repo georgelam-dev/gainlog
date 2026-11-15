@@ -1,9 +1,10 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { colors } from '@/constants/theme';
 import { fmt, sumEntries } from '@/lib/nutrition';
 import type { SavedMeal } from '@/lib/types';
 import { describeAmount } from '@/lib/units';
+import { Text } from '@/components/ui/Text';
 
 type Props = {
   meal: SavedMeal;

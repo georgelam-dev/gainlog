@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 
 import { colors, radius, spacing } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
@@ -7,6 +7,7 @@ import { useWorkout } from '@/context/WorkoutProvider';
 import { toUnit } from '@/lib/weightUnits';
 import { countDoneSets, formatDurationShort, volumeKg, workoutDateLabel } from '@/lib/workout';
 import type { Workout } from '@/lib/workoutTypes';
+import { Text } from '@/components/ui/Text';
 
 export default function HistoryScreen() {
   const { settings } = useAppData();

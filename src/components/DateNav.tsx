@@ -1,7 +1,8 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { colors } from '@/constants/theme';
+import { colors, fonts } from '@/constants/theme';
 import { formatDateLabel, shiftDateKey, todayKey } from '@/lib/date';
+import { Text } from '@/components/ui/Text';
 
 type Props = {
   date: string;
@@ -43,6 +44,6 @@ const styles = StyleSheet.create({
   },
   arrow: { paddingHorizontal: 16, paddingVertical: 4 },
   arrowText: { fontSize: 32, color: colors.primary, lineHeight: 34 },
-  label: { fontSize: 18, fontWeight: '700', color: colors.text, textAlign: 'center' },
+  label: { fontFamily: fonts.display, fontSize: 24, fontWeight: '800', color: colors.text, textAlign: 'center' },
   hint: { fontSize: 11, color: colors.muted, textAlign: 'center' },
 });

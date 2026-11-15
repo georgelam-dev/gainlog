@@ -1,9 +1,10 @@
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from 'expo-camera';
 import { useRef } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { colors, radius, spacing } from '@/constants/theme';
+import { colors, radius, spacing, fonts } from '@/constants/theme';
+import { Text } from '@/components/ui/Text';
 
 type Props = {
   visible: boolean;
@@ -84,7 +85,7 @@ function ScannerBody({ onScanned, onClose }: Omit<Props, 'visible'>) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   center: { alignItems: 'center', justifyContent: 'center', padding: spacing * 2, gap: 12 },
-  title: { fontSize: 18, fontWeight: '700', color: colors.text },
+  title: { fontFamily: fonts.display, fontSize: 24, fontWeight: '800', color: colors.text },
   body: { fontSize: 14, color: colors.muted, textAlign: 'center' },
   primaryBtn: {
     backgroundColor: colors.primary,

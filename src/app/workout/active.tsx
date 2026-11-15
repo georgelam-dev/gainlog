@@ -1,25 +1,17 @@
 import { router, Stack } from 'expo-router';
 import { useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ActionMenu, type MenuAction } from '@/components/ActionMenu';
 import { Elapsed } from '@/components/workout/Elapsed';
 import { ExerciseCard } from '@/components/workout/ExerciseCard';
 import { RestTimerBar } from '@/components/workout/RestTimerBar';
-import { colors, radius, spacing } from '@/constants/theme';
+import { colors, radius, spacing, fonts } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
 import { useWorkout } from '@/context/WorkoutProvider';
 import { countDoneSets, formatRest } from '@/lib/workout';
 import { REST_PRESETS, type WorkoutExercise } from '@/lib/workoutTypes';
+import { Text, TextInput } from '@/components/ui/Text';
 
 export default function ActiveWorkoutScreen() {
   const { settings } = useAppData();
@@ -190,10 +182,10 @@ const styles = StyleSheet.create({
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { padding: spacing, gap: 12, paddingBottom: spacing * 3 },
   muted: { fontSize: 13, color: colors.muted },
-  headerTime: { fontSize: 18, fontWeight: '800', color: colors.text },
-  finishBtn: { backgroundColor: colors.carbs, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
-  finishText: { color: '#0E0F13', fontWeight: '800', fontSize: 15 },
-  nameInput: { fontSize: 24, fontWeight: '800', color: colors.text, paddingVertical: 4 },
+  headerTime: { fontFamily: fonts.display, fontSize: 24, fontWeight: '800', color: colors.text },
+  finishBtn: { backgroundColor: colors.done, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6 },
+  finishText: { color: colors.bg, fontWeight: '800', fontSize: 15 },
+  nameInput: { fontFamily: fonts.display, fontSize: 32, fontWeight: '800', color: colors.text, paddingVertical: 4 },
   addBtn: {
     backgroundColor: colors.primary,
     borderRadius: radius,

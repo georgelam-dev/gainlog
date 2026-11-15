@@ -1,19 +1,11 @@
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  type ViewStyle,
-} from 'react-native';
+import { KeyboardAvoidingView, Modal, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 
-import { colors, radius, spacing } from '@/constants/theme';
+import { colors, radius, spacing, fonts } from '@/constants/theme';
 import { makeId } from '@/lib/date';
 import { fmt, kcalFromGrams } from '@/lib/nutrition';
 import type { EntryUnit, Food } from '@/lib/types';
+import { Text, TextInput } from '@/components/ui/Text';
 
 /** Quick adds are stored as one 100 g "serving" so normal scaling/editing keeps working. */
 export const QUICK_SERVING: EntryUnit = { label: 'serving', grams: 100, qty: 1 };
@@ -169,7 +161,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing * 2,
     gap: 12,
   },
-  title: { fontSize: 18, fontWeight: '700', color: colors.text },
+  title: { fontFamily: fonts.display, fontSize: 24, fontWeight: '800', color: colors.text },
   muted: { fontSize: 13, color: colors.muted },
   label: { fontSize: 13, fontWeight: '600', color: colors.text },
   row: { flexDirection: 'row', gap: 10 },
@@ -177,7 +169,7 @@ const styles = StyleSheet.create({
   // No flex here: in the vertical sheet, flex: 1 collapsed the Calories field so it overlapped the macros.
   field: { gap: 6 },
   fieldInput: { flex: 1, minWidth: 0 },
-  inputLarge: { fontSize: 22, fontWeight: '700', paddingVertical: 12 },
+  inputLarge: { fontFamily: fonts.display, fontSize: 30, fontWeight: '700', paddingVertical: 12 },
   hint: { fontSize: 12, color: colors.muted },
   fieldRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   input: {

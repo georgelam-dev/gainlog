@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 
-import { colors, radius } from '@/constants/theme';
+import { colors, fonts, radii, radius } from '@/constants/theme';
 import type { WeightUnit } from '@/lib/types';
 import { fmtLoad, parseNum, toKg, toUnit } from '@/lib/weightUnits';
 import { formatRest, suggestSet } from '@/lib/workout';
 import type { WorkoutExercise, WorkoutSet } from '@/lib/workoutTypes';
+import { Text, TextInput } from '@/components/ui/Text';
 
 type Props = {
   exercise: WorkoutExercise;
@@ -164,44 +165,47 @@ function SetRow({
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.card, borderRadius: radius, padding: 14, gap: 6 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
-  name: { fontSize: 17, fontWeight: '700', color: colors.primary },
+  name: { fontFamily: fonts.display, fontSize: 24, fontWeight: '800', color: colors.text },
   muted: { fontSize: 12, color: colors.muted },
   dots: { fontSize: 22, color: colors.muted, paddingHorizontal: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  setRow: { paddingVertical: 4, paddingHorizontal: 4, marginHorizontal: -4, borderRadius: 10 },
-  setDone: { backgroundColor: 'rgba(52, 211, 153, 0.12)' },
-  colHead: { fontSize: 11, fontWeight: '700', color: colors.muted, textTransform: 'uppercase' },
+  setRow: { paddingVertical: 4, paddingHorizontal: 4, marginHorizontal: -4, borderRadius: radii.steel + 2 },
+  setDone: { backgroundColor: colors.doneWash },
+  colHead: { fontSize: 12, fontWeight: '600', color: colors.muted },
   colSet: { width: 30, textAlign: 'center' },
   colPrev: { flex: 1 },
   colInput: { width: 64, textAlign: 'center' },
   colCheck: { width: 38 },
-  setNum: { fontSize: 15, fontWeight: '700', color: colors.text },
+  setNum: { fontFamily: fonts.display, fontSize: 20, fontWeight: '800', color: colors.text },
   prev: { fontSize: 13, color: colors.muted, fontVariant: ['tabular-nums'] },
   input: {
     backgroundColor: colors.cardAlt,
-    borderRadius: 8,
-    paddingVertical: 6,
-    fontSize: 16,
-    fontWeight: '600',
+    borderRadius: radii.steel,
+    paddingVertical: 4,
+    fontFamily: fonts.display,
+    fontSize: 22,
+    fontWeight: '700',
     color: colors.text,
     fontVariant: ['tabular-nums'],
   },
   inputDone: { backgroundColor: 'transparent' },
   check: {
-    height: 34,
-    borderRadius: 8,
+    height: 36,
+    borderRadius: radii.steel,
     backgroundColor: colors.cardAlt,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkOn: { backgroundColor: colors.carbs },
+  checkOn: { backgroundColor: colors.done },
   checkText: { fontSize: 17, fontWeight: '800', color: colors.muted },
   addSet: {
     marginTop: 4,
     paddingVertical: 9,
-    borderRadius: 10,
-    backgroundColor: colors.cardAlt,
+    borderRadius: radii.steel,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.border,
     alignItems: 'center',
   },
-  addSetText: { color: colors.text, fontWeight: '600', fontSize: 14 },
+  addSetText: { color: colors.muted, fontWeight: '600', fontSize: 14 },
 });

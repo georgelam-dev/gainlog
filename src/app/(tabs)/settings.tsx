@@ -1,18 +1,8 @@
 import { useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { BackupCard } from '@/components/BackupCard';
-import { colors, radius, spacing } from '@/constants/theme';
+import { colors, radius, spacing, fonts } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
 import {
   fmt,
@@ -22,6 +12,7 @@ import {
   percentToGrams,
 } from '@/lib/nutrition';
 import type { MacroMode, Settings } from '@/lib/types';
+import { Text, TextInput } from '@/components/ui/Text';
 
 type Draft = { calories: string; carbs: string; protein: string; fat: string };
 
@@ -230,13 +221,11 @@ function SettingsForm({ settings }: { settings: Settings }) {
 const styles = StyleSheet.create({
   content: { padding: spacing, gap: 12, paddingBottom: spacing * 3 },
   card: { backgroundColor: colors.card, borderRadius: radius, padding: spacing, gap: 12 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.text },
+  sectionTitle: { fontFamily: fonts.display, fontSize: 22, fontWeight: '800', color: colors.text },
   subTitle: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '600',
     color: colors.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },

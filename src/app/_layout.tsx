@@ -1,7 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
-import { colors } from '@/constants/theme';
+import { colors, fonts } from '@/constants/theme';
 import { AppDataProvider } from '@/context/AppDataProvider';
 import { WorkoutProvider } from '@/context/WorkoutProvider';
 
@@ -16,6 +16,7 @@ export default function RootLayout() {
             headerStyle: { backgroundColor: colors.bg },
             headerTintColor: colors.text,
             headerShadowVisible: false,
+            headerTitleStyle: { fontFamily: fonts.display, fontWeight: '800', fontSize: 22 },
           }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="add-food" options={{ presentation: 'modal', title: 'Add food' }} />

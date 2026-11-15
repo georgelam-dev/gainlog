@@ -1,12 +1,13 @@
 import { Stack } from 'expo-router';
 import { useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { colors, radius, spacing } from '@/constants/theme';
+import { colors, radius, spacing, fonts } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
 import { formatDateLabel } from '@/lib/date';
 import { fmt, macroTargets, sumEntries } from '@/lib/nutrition';
 import type { LogEntry, NutrientKey } from '@/lib/types';
+import { Text } from '@/components/ui/Text';
 
 type Unit = 'g' | 'mg' | 'µg';
 const PER_GRAM: Record<Unit, number> = { g: 1, mg: 1000, 'µg': 1_000_000 };
@@ -138,7 +139,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   content: { padding: spacing, gap: 12, paddingBottom: spacing * 3 },
   card: { backgroundColor: colors.card, borderRadius: radius, padding: spacing, gap: 4 },
-  kcal: { fontSize: 28, fontWeight: '800', color: colors.text },
+  kcal: { fontFamily: fonts.display, fontSize: 38, fontWeight: '800', color: colors.text },
   kcalGoal: { fontSize: 16, fontWeight: '500', color: colors.muted },
   muted: { fontSize: 13, color: colors.muted, fontWeight: '400' },
   row: { paddingVertical: 10, gap: 6 },

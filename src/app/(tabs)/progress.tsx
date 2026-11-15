@@ -1,22 +1,14 @@
 import { useMemo, useState } from 'react';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { TrendChart } from '@/components/TrendChart';
 import { WeekCalories } from '@/components/WeekCalories';
-import { colors, radius, spacing } from '@/constants/theme';
+import { colors, radius, spacing, fonts } from '@/constants/theme';
 import { useAppData } from '@/context/AppDataProvider';
 import { formatDateLabel, shiftDateKey, todayKey } from '@/lib/date';
 import type { WeightEntry } from '@/lib/types';
 import { fmtW, toKg, toUnit } from '@/lib/weightUnits';
+import { Text, TextInput } from '@/components/ui/Text';
 
 
 type Range = 30 | 90 | 0; // 0 = all time
@@ -223,12 +215,11 @@ function Stat({ label, value, unit }: { label: string; value: string; unit: stri
 const styles = StyleSheet.create({
   content: { padding: spacing, gap: 12, paddingBottom: spacing * 3 },
   section: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginTop: 8,
+    fontFamily: fonts.display,
+    fontSize: 24,
+    fontWeight: '800',
+    color: colors.text,
+    marginTop: 12,
   },
   card: { backgroundColor: colors.card, borderRadius: radius, padding: spacing, gap: 10 },
   cardTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
@@ -269,7 +260,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
   },
-  statValue: { fontSize: 18, fontWeight: '800', color: colors.text, fontVariant: ['tabular-nums'] },
+  statValue: { fontFamily: fonts.display, fontSize: 26, fontWeight: '800', color: colors.text, fontVariant: ['tabular-nums'] },
   statUnit: { fontSize: 12, fontWeight: '500', color: colors.muted },
   histRow: {
     flexDirection: 'row',
